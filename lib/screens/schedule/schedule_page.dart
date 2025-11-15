@@ -16,6 +16,7 @@ class _SchedulePageState extends State<SchedulePage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   CalendarFormat _format = CalendarFormat.month;
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
@@ -31,9 +32,25 @@ class _SchedulePageState extends State<SchedulePage> {
     final sel = _selectedDay ?? DateTime.now();
     final selKey = DateTime(sel.year, sel.month, sel.day);
     selectedEvents = eventsByDay[selKey] ?? [];
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      selectedEvents = selectedEvents.where((e) => (e.title.toLowerCase()).contains(q)).toList();
+    }
 
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: TextFormField(
+            decoration: const InputDecoration(
+              hintText: 'Tìm kiếm sự kiện...',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            onChanged: (v) => setState(() => _searchQuery = v.trim()),
+          ),
+        ),
         Stack(
           children: [
             TableCalendar<EventModel>(
@@ -91,28 +108,56 @@ class _SchedulePageState extends State<SchedulePage> {
               itemCount: selectedEvents.length,
               itemBuilder: (ctx, i) {
                 final e = selectedEvents[i];
-                return ListTile(
-                  title: Text(e.title),
-                  subtitle: Text('${DateFormat('HH:mm').format(e.startTime)} - ${DateFormat('HH:mm').format(e.endTime)} • ${e.status}'),
-                  // RSVP buttons if current user is a participant
-                  trailing: (me != null && e.participants.isNotEmpty)
-                      ? Builder(builder: (_) {
-                          final mine = e.participants.firstWhere(
-                            (p) => p.userId == me.id,
-                            orElse: () =>
-                                // return a dummy when not found to hide buttons
-                                // this branch will be handled below
-                                // by checking id mismatch
-                                e.participants.first,
-                          );
-                          if (mine.userId != me.id) return const SizedBox.shrink();
-                          final pid = mine.id;
-                          return Wrap(spacing: 8, children: [
-                            TextButton(onPressed: ()=>api.rsvp(pid,'accepted'), child: const Text('Tham gia')),
-                            TextButton(onPressed: ()=>api.rsvp(pid,'declined'), child: const Text('Từ chối')),
-                          ]);
-                        })
-                      : null,
+                return Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: ListTile(
+                    title: Text(e.title),
+                    subtitle: Text('${DateFormat('HH:mm').format(e.startTime)} - ${DateFormat('HH:mm').format(e.endTime)} • ${e.status}'),
+                    trailing: (me != null && e.participants.isNotEmpty)
+                        ? Builder(builder: (_) {
+                            final mine = e.participants.firstWhere(
+                              (p) => p.userId == me.id,
+                              orElse: () => e.participants.first,
+                            );
+                            if (mine.userId != me.id) return const SizedBox.shrink();
+                            final pid = mine.id;
+                            return Wrap(spacing: 8, children: [
+                              TextButton(onPressed: ()=>api.rsvp(pid,'accepted'), child: const Text('Tham gia')),
+                              TextButton(onPressed: ()=>api.rsvp(pid,'declined'), child: const Text('Từ chối')),
+                              TextButton(
+                                onPressed: () async {
+                                  final controller = TextEditingController();
+                                  final reason = await showDialog<String>(context: context, builder: (ctx) {
+                                    return AlertDialog(
+                                      title: const Text('Yêu cầu điều chỉnh'),
+                                      content: TextField(
+                                        controller: controller,
+                                        maxLines: 4,
+                                        decoration: const InputDecoration(
+                                          hintText: 'Nhập lý do/ghi chú...',
+                                          border: OutlineInputBorder(),
+                                        ),
+                                      ),
+                                      actions: [
+                                        TextButton(onPressed: ()=>Navigator.of(ctx).pop(), child: const Text('Hủy')),
+                                        ElevatedButton(onPressed: (){ Navigator.of(ctx).pop(controller.text.trim()); }, child: const Text('Gửi')),
+                                      ],
+                                    );
+                                  });
+                                  if (reason != null && reason.isNotEmpty) {
+                                    await api.requestParticipantAdjustment(pid, reason);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã gửi yêu cầu điều chỉnh')));
+                                    }
+                                  }
+                                },
+                                child: const Text('Yêu cầu điều chỉnh'),
+                              ),
+                            ]);
+                          })
+                        : null,
+                  ),
                 );
               },
             ),

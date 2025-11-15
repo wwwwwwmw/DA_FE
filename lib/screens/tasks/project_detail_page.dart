@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../services/api_service.dart';
 import '../../models/task.dart';
 import 'add_task_page.dart';
@@ -19,6 +20,9 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   bool _loading = true;
   int _explicitSum = 0; // tổng trọng số do người dùng nhập
   int _effectiveTotal = 0; // tổng trọng số hiệu dụng (nên =100 hoặc = explicitSum nếu <100)
+  int _todoCount = 0;
+  int _inProgressCount = 0;
+  int _completedCount = 0;
 
   @override
   void initState() {
@@ -36,8 +40,20 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     }
     int effTotal = 0;
     for (final t in list) { effTotal += t.effectiveWeight; }
+    // Đếm theo trạng thái cho riêng project này (list chỉ chứa task của project này)
+    int todo = 0, doing = 0, done = 0;
+    for (final t in list) {
+      if (t.status == 'completed') {
+        done++;
+      } else if (t.status == 'in_progress') {
+        doing++;
+      } else {
+        // treat others as todo (e.g., 'todo')
+        todo++;
+      }
+    }
     if (!mounted) return;
-    setState(() { _tasks = list; _loading = false; _explicitSum = explicit; _effectiveTotal = effTotal; });
+    setState(() { _tasks = list; _loading = false; _explicitSum = explicit; _effectiveTotal = effTotal; _todoCount = todo; _inProgressCount = doing; _completedCount = done; });
   }
 
   @override
@@ -102,6 +118,30 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                               padding: EdgeInsets.only(top:4.0),
                               child: Text('Cảnh báo: Tổng trọng số đã vượt 100%', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                             ),
+                        ]),
+                      ),
+                    ),
+                    const SizedBox(height:12),
+                    Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          const Text('Trạng thái nhiệm vụ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 220,
+                            child: PieChart(
+                              PieChartData(
+                                sections: _buildStatusSections(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _legendRow('Completed', _completedCount, Colors.green),
+                          _legendRow('In Progress', _inProgressCount, Colors.blue),
+                          _legendRow('To Do', _todoCount, Colors.orange),
                         ]),
                       ),
                     ),
@@ -184,5 +224,33 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
         ],
       );
     });
+  }
+
+  List<PieChartSectionData> _buildStatusSections() {
+    final total = _todoCount + _inProgressCount + _completedCount;
+    return [
+      _sec(_todoCount, total, Colors.orange, 'To Do'),
+      _sec(_inProgressCount, total, Colors.blue, 'In Progress'),
+      _sec(_completedCount, total, Colors.green, 'Completed'),
+    ];
+  }
+
+  PieChartSectionData _sec(int value, int total, Color color, String label) {
+    final pct = total == 0 ? 0 : (value / total) * 100;
+    return PieChartSectionData(
+      color: color,
+      value: value.toDouble(),
+      title: '${pct.round()}%',
+      radius: 60,
+      titleStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    );
+  }
+
+  Widget _legendRow(String label, int value, Color color) {
+    return Row(children: [
+      Container(width: 14, height: 14, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+      const SizedBox(width: 8),
+      Text('$label: $value')
+    ]);
   }
 }

@@ -163,7 +163,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.editing==null? 'Add Task':'Edit Task'),
+        title: Text(widget.editing==null? 'Thêm Công việc':'Sửa Công việc'),
         actions: [
           if (canDelete)
             IconButton(
@@ -192,14 +192,14 @@ class _AddTaskPageState extends State<AddTaskPage> {
         child: Form(
           key: _formKey,
           child: ListView(children: [
-            TextFormField(controller: _titleCtrl, decoration: const InputDecoration(labelText: 'Task Name'), validator: (v)=> v==null||v.isEmpty? 'Required':null),
+            TextFormField(controller: _titleCtrl, decoration: const InputDecoration(labelText: 'Tên công việc'), validator: (v)=> v==null||v.isEmpty? 'Không được để trống':null),
             const SizedBox(height:12),
-            TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: 'Description'), maxLines:3),
+            TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: 'Mô tả'), maxLines:3),
             const SizedBox(height:12),
             Row(children: [
-              Expanded(child: OutlinedButton(onPressed: ()=>_pickDate(true), child: Text(_start==null? 'Start Time': _start.toString()))),
+              Expanded(child: OutlinedButton(onPressed: ()=>_pickDate(true), child: Text(_start==null? 'Thời gian bắt đầu': _start.toString()))),
               const SizedBox(width:8),
-              Expanded(child: OutlinedButton(onPressed: ()=>_pickDate(false), child: Text(_end==null? 'End Time': _end.toString()))),
+              Expanded(child: OutlinedButton(onPressed: ()=>_pickDate(false), child: Text(_end==null? 'Thời gian kết thúc': _end.toString()))),
             ]),
             const SizedBox(height:12),
             // Project selection (required)
@@ -213,37 +213,37 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 initialValue: _projectId,
                 items: items,
                 onChanged: isLocked ? null : (v) => setState(()=> _projectId = v),
-                validator: (v)=> v==null? 'Chọn project trước khi tạo task': null,
-                decoration: const InputDecoration(labelText: 'Project'),
+                validator: (v)=> v==null? 'Chọn dự án trước khi tạo công việc': null,
+                decoration: const InputDecoration(labelText: 'Dự án'),
               );
             }),
             const SizedBox(height:12),
             DropdownButtonFormField(initialValue: _status, items: const [
-              DropdownMenuItem(value: 'todo', child: Text('To Do')),
-              DropdownMenuItem(value: 'in_progress', child: Text('In Progress')),
-              DropdownMenuItem(value: 'completed', child: Text('Completed')),
-            ], onChanged: (v)=> setState(()=> _status = v as String), decoration: const InputDecoration(labelText: 'Status')),
+              DropdownMenuItem(value: 'todo', child: Text('Cần làm')),
+              DropdownMenuItem(value: 'in_progress', child: Text('Đang làm')),
+              DropdownMenuItem(value: 'completed', child: Text('Hoàn thành')),
+            ], onChanged: (v)=> setState(()=> _status = v as String), decoration: const InputDecoration(labelText: 'Trạng thái')),
             const SizedBox(height:12),
             DropdownButtonFormField(initialValue: _priority, items: const [
-              DropdownMenuItem(value: 'low', child: Text('Low')),
-              DropdownMenuItem(value: 'normal', child: Text('Normal')),
-              DropdownMenuItem(value: 'high', child: Text('High')),
-              DropdownMenuItem(value: 'urgent', child: Text('Urgent')),
-            ], onChanged: (v)=> setState(()=> _priority = v as String), decoration: const InputDecoration(labelText: 'Priority')),
+              DropdownMenuItem(value: 'low', child: Text('Thấp')),
+              DropdownMenuItem(value: 'normal', child: Text('Bình thường')),
+              DropdownMenuItem(value: 'high', child: Text('Cao')),
+              DropdownMenuItem(value: 'urgent', child: Text('Khẩn cấp')),
+            ], onChanged: (v)=> setState(()=> _priority = v as String), decoration: const InputDecoration(labelText: 'Độ ưu tiên')),
             const SizedBox(height:12),
             DropdownButtonFormField(
               initialValue: _assignmentType,
               items: const [
-                DropdownMenuItem(value: 'open', child: Text('Open (self-apply)')),
-                DropdownMenuItem(value: 'direct', child: Text('Direct (assign)')),
+                DropdownMenuItem(value: 'open', child: Text('Mở (tự nhận)')),
+                DropdownMenuItem(value: 'direct', child: Text('Trực tiếp (phân công)')),
               ],
               onChanged: (v) => setState(() => _assignmentType = v as String),
-              decoration: const InputDecoration(labelText: 'Assignment Type'),
+              decoration: const InputDecoration(labelText: 'Hình thức giao việc'),
             ),
             const SizedBox(height:12),
             TextFormField(
               initialValue: _capacity.toString(),
-              decoration: const InputDecoration(labelText: 'Capacity (slots)'),
+              decoration: const InputDecoration(labelText: 'Số chỗ (slots)'),
               keyboardType: TextInputType.number,
               onChanged: (v) {
                 final n = int.tryParse(v.trim());
@@ -281,7 +281,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   initialValue: _assigneeId,
                   items: _deptUsers.map((u) => DropdownMenuItem(value: u['id']!, child: Text(u['name']!))).toList(),
                   onChanged: (v) => setState(()=> _assigneeId = v),
-                  decoration: const InputDecoration(labelText: 'Assign to (department)'),
+                  decoration: const InputDecoration(labelText: 'Giao cho (phòng ban)'),
                 );
               })
             ],
@@ -294,13 +294,13 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   initialValue: _departmentId,
                   items: _departments.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
                   onChanged: (v) => setState(() => _departmentId = v),
-                  decoration: const InputDecoration(labelText: 'Department (admin only)'),
+                  decoration: const InputDecoration(labelText: 'Phòng ban (chỉ admin)'),
                 );
               }
               return const SizedBox.shrink();
             }),
             const SizedBox(height:24),
-            ElevatedButton(onPressed: _save, child: const Text('Save'))
+            ElevatedButton(onPressed: _save, child: const Text('Lưu'))
           ]),
         ),
       ),

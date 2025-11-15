@@ -68,7 +68,7 @@ class _HomePageState extends State<HomePage> {
         currentIndex: _index.clamp(0, pages.length - 1),
         onTap: (i) => setState(() => _index = i),
         items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
           const BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch'),
           BottomNavigationBarItem(
             icon: Stack(
@@ -81,7 +81,7 @@ class _HomePageState extends State<HomePage> {
                     top: -2,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, borderRadius: BorderRadius.circular(10)),
                       constraints: const BoxConstraints(minWidth: 16),
                       child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center),
                     ),

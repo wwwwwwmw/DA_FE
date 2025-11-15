@@ -3,6 +3,7 @@ import 'users_tab.dart';
 import 'departments_tab.dart';
 import 'rooms_tab.dart';
 import 'events_admin_tab.dart';
+import 'system_tab.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -17,7 +18,7 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-  _tab = TabController(length: 4, vsync: this);
+  _tab = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -43,6 +44,7 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
             Tab(text: 'Phòng ban'),
             Tab(text: 'Phòng họp'),
             Tab(text: 'Lịch'),
+            Tab(text: 'Hệ thống'),
           ],
         ),
         Expanded(
@@ -53,6 +55,7 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
               DepartmentsTab(),
               RoomsTab(),
               EventsAdminTab(),
+              SystemTab(),
             ],
           ),
         ),

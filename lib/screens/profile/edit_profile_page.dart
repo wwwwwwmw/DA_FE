@@ -67,7 +67,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       try { avatarBytes = base64Decode(base64Part); } catch (_) {}
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile')),
+      appBar: AppBar(title: const Text('Chỉnh sửa Hồ sơ')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
@@ -80,9 +80,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   onTap: _pickImage,
                   child: CircleAvatar(
                     radius: 64,
-                    backgroundColor: Colors.blue.shade100,
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                     backgroundImage: avatarBytes != null ? MemoryImage(avatarBytes) : null,
-                    child: avatarBytes == null ? const Icon(Icons.camera_alt, size: 40, color: Colors.blue) : null,
+                    child: avatarBytes == null ? Icon(Icons.camera_alt, size: 40, color: Theme.of(context).colorScheme.primary) : null,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -90,7 +90,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 const SizedBox(height: 14),
                 _RoundedField(controller: _contactCtrl, label: 'Liên hệ', icon: Icons.phone),
                 const SizedBox(height: 14),
-                _RoundedField(controller: _pinCtrl, label: 'Employee Pin', icon: Icons.key),
+                _RoundedField(controller: _pinCtrl, label: 'Mã PIN nhân viên', icon: Icons.key),
                 const SizedBox(height: 24),
                 ElevatedButton(onPressed: _saving? null : _save, child: _saving? const CircularProgressIndicator() : const Text('Lưu')),
               ]),
@@ -114,13 +114,13 @@ class _RoundedField extends StatelessWidget {
       controller: controller,
       validator: validator,
       decoration: InputDecoration(
-        prefixIcon: icon!=null? Icon(icon, color: Colors.blue): null,
+        prefixIcon: icon!=null? Icon(icon, color: Theme.of(context).colorScheme.primary): null,
         labelText: label,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Theme.of(context).cardColor,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFB3D9FF))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.blue)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)),
       ),
     );
   }

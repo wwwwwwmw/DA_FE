@@ -1,5 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/event.dart';
@@ -8,6 +11,7 @@ import '../models/project.dart';
 import '../models/notification.dart';
 import '../models/department.dart';
 import '../models/room.dart';
+import '../models/task_comment.dart';
 
 class ApiService extends ChangeNotifier {
   final String baseUrl;
@@ -24,6 +28,9 @@ class ApiService extends ChangeNotifier {
   List<TaskModel> tasks = [];
   List<ProjectModel> projects = [];
   Map<String,int> taskStats = { 'todo':0,'in_progress':0,'completed':0 };
+  // Reports state
+  List<Map<String, dynamic>> reportEventsByMonth = [];
+  List<Map<String, dynamic>> reportEventsByDepartment = [];
 
   ApiService({required this.baseUrl}) {
     _dio = Dio(BaseOptions(baseUrl: baseUrl));
@@ -214,6 +221,13 @@ class ApiService extends ChangeNotifier {
     await fetchEvents();
   }
 
+  Future<void> requestParticipantAdjustment(String participantId, String note) async {
+    await _dio.post('/api/participants/$participantId/request-adjustment', data: {
+      'note': note,
+    });
+    await fetchEvents();
+  }
+
   // ============== Admin APIs ==============
   Future<List<UserModel>> listUsers({int limit = 50, int offset = 0}) async {
     final res = await _dio.get('/api/users', queryParameters: {
@@ -344,6 +358,29 @@ class ApiService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ============== Reports ==============
+  Future<void> fetchReportEventsByMonth({int? year}) async {
+    final res = await _dio.get('/api/reports/eventsByMonth', queryParameters: {
+      if (year != null) 'year': year,
+    });
+    final list = (res.data as List).map<Map<String, dynamic>>((e) => {
+      'month': (e['month'] is int) ? e['month'] : int.tryParse('${e['month']}') ?? 0,
+      'count': (e['count'] is int) ? e['count'] : int.tryParse('${e['count']}') ?? 0,
+    }).toList();
+    reportEventsByMonth = list;
+    notifyListeners();
+  }
+
+  Future<void> fetchReportEventsByDepartment() async {
+    final res = await _dio.get('/api/reports/eventsByDepartment');
+    final list = (res.data as List).map<Map<String, dynamic>>((e) => {
+      'department': e['department']?.toString() ?? 'Khác',
+      'count': (e['count'] is int) ? e['count'] : int.tryParse('${e['count']}') ?? 0,
+    }).toList();
+    reportEventsByDepartment = list;
+    notifyListeners();
+  }
+
   Future<void> fetchProjects() async {
     final res = await _dio.get('/api/projects');
     projects = (res.data as List).map((e) => ProjectModel.fromJson(e)).toList();
@@ -442,5 +479,82 @@ class ApiService extends ChangeNotifier {
   Future<void> updateTaskProgress(String taskId, int progress) async {
     await _dio.put('/api/tasks/$taskId/progress', data: { 'progress': progress });
     await fetchTasks();
+  }
+
+  // ===== Task Comments =====
+  Future<List<TaskCommentModel>> fetchTaskComments(String taskId) async {
+    final res = await _dio.get('/api/tasks/$taskId/comments');
+    final list = (res.data as List).map((e) => TaskCommentModel.fromJson(e as Map<String, dynamic>)).toList();
+    return list;
+  }
+
+  Future<TaskCommentModel> addTaskComment(String taskId, String content) async {
+    final res = await _dio.post('/api/tasks/$taskId/comments', data: { 'content': content });
+    return TaskCommentModel.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  // ===== System / Backup =====
+  Future<void> downloadBackup() async {
+    final endpoint = '/api/backup/create';
+    if (kIsWeb) {
+      final res = await _dio.get<List<int>>(endpoint, options: Options(responseType: ResponseType.bytes));
+      final bytes = res.data;
+      if (bytes == null) throw Exception('No data');
+      String filename = 'backup.sql';
+      final cd = res.headers.map['content-disposition']?.join(';') ?? '';
+      final match = RegExp(r'filename\*=UTF-8\''"?([^";]+)"?|filename="?([^";]+)"?').firstMatch(cd);
+      if (match != null) {
+        filename = match.group(1) ?? match.group(2) ?? filename;
+      }
+      final blob = html.Blob([bytes], 'application/sql');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)..download = filename;
+      html.document.body?.append(anchor);
+      anchor.click();
+      anchor.remove();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      // Non-web: hiện tại chỉ thực hiện gọi để server tạo file, và thông báo.
+      // Có thể mở rộng: lưu vào thư mục ứng dụng bằng path_provider.
+      await _dio.get(endpoint, options: Options(responseType: ResponseType.bytes));
+    }
+  }
+
+  // ===== Reports export (CSV) =====
+  Future<void> exportEventsCSV({DateTime? from, DateTime? to}) async {
+    // Build URL with optional from/to and token (for url_launcher without headers)
+    final params = <String, String>{};
+    if (from != null) params['from'] = from.toIso8601String();
+    if (to != null) params['to'] = to.toIso8601String();
+    if (_token != null) params['token'] = _token!;
+    final qs = params.entries.map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}').join('&');
+    final url = '${_dio.options.baseUrl}/api/reports/export/events${qs.isNotEmpty ? '?$qs' : ''}';
+
+    // For web/mobile, use url_launcher so browser downloads respecting Content-Disposition
+    final ok = await launchUrlString(url, mode: LaunchMode.externalApplication);
+    if (!ok) {
+      // Fallback: try direct GET to trigger download behavior (web may still need blob)
+      if (kIsWeb) {
+        final res = await _dio.get<List<int>>('/api/reports/export/events',
+            queryParameters: params..remove('token'),
+            options: Options(responseType: ResponseType.bytes));
+        final bytes = res.data;
+        if (bytes == null) throw Exception('No CSV data');
+        String filename = 'events.csv';
+        final cd = res.headers.map['content-disposition']?.join(';') ?? '';
+        final match = RegExp(r'filename\*=UTF-8\''"?([^";]+)"?|filename="?([^";]+)"?').firstMatch(cd);
+        if (match != null) filename = match.group(1) ?? match.group(2) ?? filename;
+        final blob = html.Blob([bytes], 'text/csv');
+        final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: blobUrl)..download = filename;
+        html.document.body?.append(anchor);
+        anchor.click();
+        anchor.remove();
+        html.Url.revokeObjectUrl(blobUrl);
+      } else {
+        // On mobile/desktop without a browser handler, simply issue the GET to ensure server reachable
+        await _dio.get('/api/reports/export/events', queryParameters: params..remove('token'));
+      }
+    }
   }
 }

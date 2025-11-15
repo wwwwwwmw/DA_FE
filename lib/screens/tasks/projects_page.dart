@@ -20,7 +20,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
   Widget build(BuildContext context) {
     final projects = context.watch<ApiService>().projects;
     return Scaffold(
-      appBar: AppBar(title: const Text('Projects')),
+      appBar: AppBar(title: const Text('Dự án')),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: projects.length,
@@ -39,7 +39,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
                   const SizedBox(height: 12),
                   LinearPercentIndicator(percent: pct.clamp(0,1), lineHeight: 8, progressColor: const Color(0xFF2D9CDB), backgroundColor: Colors.grey.shade200, barRadius: const Radius.circular(6)),
                   const SizedBox(height: 4),
-                  Text('${p.progress ?? 0}% completed', style: const TextStyle(fontSize: 12, color: Colors.black54))
+                  Text('${p.progress ?? 0}% hoàn thành', style: const TextStyle(fontSize: 12, color: Colors.black54))
                 ]),
               ),
             ),
@@ -64,11 +64,11 @@ class _ProjectsPageState extends State<ProjectsPage> {
     await showDialog(context: context, builder: (ctx) {
       return StatefulBuilder(builder: (ctx, setS) {
         return AlertDialog(
-          title: const Text('Create Project'),
+          title: const Text('Tạo Dự án'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
-              TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description')),
+              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Tên')),
+              TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Mô tả')),
               const SizedBox(height: 8),
               SwitchListTile(
                 title: const Text('Tạo lịch công tác'),

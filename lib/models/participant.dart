@@ -6,6 +6,7 @@ class ParticipantModel {
   final String userId;
   final String status; // pending | accepted | declined
   final UserModel? user; // optional embedded user from include
+  final String? adjustmentNote;
 
   const ParticipantModel({
     required this.id,
@@ -13,6 +14,7 @@ class ParticipantModel {
     required this.userId,
     required this.status,
     this.user,
+    this.adjustmentNote,
   });
 
   factory ParticipantModel.fromJson(Map<String, dynamic> json) {
@@ -24,6 +26,7 @@ class ParticipantModel {
       user: json['User'] != null || json['user'] != null
           ? UserModel.fromJson((json['User'] ?? json['user']) as Map<String, dynamic>)
           : null,
+      adjustmentNote: json['adjustment_note'] ?? json['adjustmentNote'],
     );
   }
 }

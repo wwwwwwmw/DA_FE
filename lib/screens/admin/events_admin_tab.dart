@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../reports/event_report_page.dart';
 import '../../services/api_service.dart';
 import '../../models/event.dart';
 
@@ -132,7 +133,23 @@ class _EventsAdminTabState extends State<EventsAdminTab> {
         ),
       ),
       if(_loading) const Positioned.fill(child: Center(child: CircularProgressIndicator())),
-      Positioned(bottom:16,right:16,child: FloatingActionButton(onPressed: _showCreate, child: const Icon(Icons.add))),
+      Positioned(
+        bottom: 16,
+        right: 16,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FloatingActionButton.extended(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EventReportPage())),
+              icon: const Icon(Icons.insights),
+              label: const Text('Báo cáo'),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton(onPressed: _showCreate, child: const Icon(Icons.add)),
+          ],
+        ),
+      ),
     ]);
   }
 }

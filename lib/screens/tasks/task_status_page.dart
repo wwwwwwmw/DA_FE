@@ -10,20 +10,20 @@ class TaskStatusPage extends StatelessWidget {
     final stats = context.watch<ApiService>().taskStats;
     final total = stats['todo']! + stats['in_progress']! + stats['completed']!;
     final sections = [
-      _sec(stats['todo']!, total, Colors.orange, 'To Do'),
-      _sec(stats['in_progress']!, total, Colors.blue, 'In Progress'),
-      _sec(stats['completed']!, total, Colors.green, 'Completed'),
+      _sec(stats['todo']!, total, Colors.orange, 'Cần làm'),
+      _sec(stats['in_progress']!, total, Colors.blue, 'Đang làm'),
+      _sec(stats['completed']!, total, Colors.green, 'Hoàn thành'),
     ];
     return Scaffold(
-      appBar: AppBar(title: const Text('Task Status')),
+      appBar: AppBar(title: const Text('Trạng thái Nhiệm vụ')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(children: [
           SizedBox(height: 220, child: PieChart(PieChartData(sections: sections))),
           const SizedBox(height: 16),
-          _legendRow('Completed', stats['completed']!, Colors.green),
-          _legendRow('In Progress', stats['in_progress']!, Colors.blue),
-          _legendRow('To Do', stats['todo']!, Colors.orange),
+          _legendRow('Hoàn thành', stats['completed']!, Colors.green),
+          _legendRow('Đang làm', stats['in_progress']!, Colors.blue),
+          _legendRow('Cần làm', stats['todo']!, Colors.orange),
         ]),
       ),
     );

@@ -25,6 +25,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final api = context.watch<ApiService>();
     final u = api.currentUser;
     final stats = api.taskStats;
+    final cs = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -32,9 +33,9 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(children: [
             CircleAvatar(
               radius: 50,
-              backgroundColor: Colors.indigo.shade100,
+              backgroundColor: cs.primaryContainer,
               backgroundImage: _avatarImageProvider(u?.avatarUrl),
-              child: u?.avatarUrl == null ? const Icon(Icons.person, size: 50, color: Colors.indigo) : null,
+              child: u?.avatarUrl == null ? Icon(Icons.person, size: 50, color: cs.primary) : null,
             ),
             const SizedBox(height: 12),
             Text(u?.name ?? '', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -43,37 +44,37 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         const SizedBox(height: 24),
         _StatCard(
-          title: 'Completed',
+          title: 'Hoàn thành',
           value: stats['completed'] ?? 0,
-          color: Colors.green,
+          color: cs.tertiary,
         ),
         const SizedBox(height: 12),
         _StatCard(
-          title: 'In Progress',
+          title: 'Đang thực hiện',
           value: stats['in_progress'] ?? 0,
-          color: Colors.blue,
+          color: cs.primary,
         ),
         const SizedBox(height: 12),
         _StatCard(
-          title: 'To Do',
+          title: 'Cần làm',
           value: stats['todo'] ?? 0,
-          color: Colors.orange,
+          color: cs.secondary,
         ),
         const SizedBox(height: 24),
         ElevatedButton.icon(
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage())),
           icon: const Icon(Icons.edit),
-          label: const Text('Edit Profile'),
+          label: const Text('Chỉnh sửa Hồ sơ'),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TaskStatusPage())),
           icon: const Icon(Icons.pie_chart),
-          label: const Text('Task Status'),
+          label: const Text('Trạng thái Nhiệm vụ'),
         ),
         const SizedBox(height: 12),
         TextButton.icon(
-          style: TextButton.styleFrom(backgroundColor: Colors.red.shade50, foregroundColor: Colors.red),
+          style: TextButton.styleFrom(backgroundColor: cs.errorContainer, foregroundColor: cs.onErrorContainer),
           onPressed: () {
             api.logout();
             Navigator.of(context).pushAndRemoveUntil(
@@ -112,7 +113,7 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0,2))],
       ),
@@ -121,7 +122,7 @@ class _StatCard extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-          Text('$value tasks', style: const TextStyle(color: Colors.grey)),
+          Text('$value nhiệm vụ', style: const TextStyle(color: Colors.grey)),
         ])),
         Text(value.toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
       ]),
