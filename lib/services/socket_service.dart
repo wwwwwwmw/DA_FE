@@ -1,11 +1,11 @@
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as sio;
 
 class SocketService {
-  IO.Socket? _socket;
+  sio.Socket? _socket;
 
-  void connect({required String baseUrl, String? token, void Function(dynamic data)? onNotification}) {
+  void connect({required String baseUrl, String? token, void Function(dynamic data)? onNotification, void Function(dynamic data)? onDataUpdated}) {
     disconnect();
-    _socket = IO.io(baseUrl, IO.OptionBuilder()
+  _socket = sio.io(baseUrl, sio.OptionBuilder()
         .setTransports(['websocket'])
         .enableForceNew()
         .setAuth(token != null ? {'token': token} : {})
@@ -15,6 +15,7 @@ class SocketService {
     _socket!.on('receiveNotification', (data) {
       if (onNotification != null) onNotification(data);
     });
+    _socket!.on('dataUpdated', (data) { if (onDataUpdated != null) onDataUpdated(data); });
     _socket!.onDisconnect((_) {});
   }
 
