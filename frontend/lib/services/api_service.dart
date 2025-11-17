@@ -2,6 +2,11 @@
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
+// Uint8List available via flutter foundation; explicit typed_data import removed.
+import 'dart:io' as io; // Safe: guarded usages with !kIsWeb
+import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
+import 'package:http/http.dart' as http;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'package:url_launcher/url_launcher_string.dart';
@@ -507,25 +512,22 @@ class ApiService extends ChangeNotifier {
   }
 
   // ===== System / Backup =====
-  Future<void> downloadBackup() async {
-    final endpoint = '/api/backup/create';
+  // Download raw backup bytes (.backup custom format) and return for caller handling
+  Future<Uint8List> downloadBackupBytes() async {
+    final res = await _dio.get<List<int>>('/api/backup/create', options: Options(responseType: ResponseType.bytes));
+    final data = res.data;
+    if (data == null) throw Exception('No backup data received');
+    return Uint8List.fromList(data);
+  }
+
+  // Convenience: save backup file directly using FileSaver (non-web) or browser download (web)
+  Future<void> saveBackupFile() async {
+    final bytes = await downloadBackupBytes();
+    // Try to extract filename from headers; fallback
+    String filename = 'backup.backup';
+    // NOTE: Dio does not expose response headers after this abstraction easily; fallback filename used.
     if (kIsWeb) {
-      final res = await _dio.get<List<int>>(endpoint, options: Options(responseType: ResponseType.bytes));
-      final bytes = res.data;
-      if (bytes == null) throw Exception('No data');
-      // Default to JSON filename; adjust if server provides a different name
-      String filename = 'backup.json';
-      final cd = res.headers.map['content-disposition']?.join(';') ?? '';
-      final match = RegExp(r'filename\*=UTF-8\''"?([^";]+)"?|filename="?([^";]+)"?').firstMatch(cd);
-      if (match != null) {
-        filename = match.group(1) ?? match.group(2) ?? filename;
-      }
-      final ct = res.headers.map['content-type']?.join(';') ?? 'application/octet-stream';
-      // If server didn't provide name but content-type is JSON, keep .json
-      if (!filename.toLowerCase().endsWith('.json') && ct.contains('application/json')) {
-        filename = 'backup.json';
-      }
-      final blob = html.Blob([bytes], ct);
+      final blob = html.Blob([bytes], 'application/octet-stream');
       final url = html.Url.createObjectUrlFromBlob(blob);
       final anchor = html.AnchorElement(href: url)..download = filename;
       html.document.body?.append(anchor);
@@ -533,56 +535,55 @@ class ApiService extends ChangeNotifier {
       anchor.remove();
       html.Url.revokeObjectUrl(url);
     } else {
-      // Non-web: hiện tại chỉ thực hiện gọi để server tạo file, và thông báo.
-      // Có thể mở rộng: lưu vào thư mục ứng dụng bằng path_provider.
-      await _dio.get(endpoint, options: Options(responseType: ResponseType.bytes));
+      await FileSaver.instance.saveFile(name: filename, bytes: bytes, mimeType: MimeType.other); // falls back to generic
     }
   }
 
-  // Web-only helper: pick a JSON file and POST to restore endpoint
-  Future<String?> restoreBackupFromFile() async {
-    if (!kIsWeb) {
-      throw Exception('Phục hồi hiện chỉ hỗ trợ trên Web');
+  // Pick a .backup file and upload for full overwrite restore
+  Future<void> uploadRestore() async {
+    Uint8List? fileBytes;
+    String? fileName;
+    if (kIsWeb) {
+      final input = html.FileUploadInputElement();
+      input.accept = '.backup';
+      input.click();
+      await input.onChange.first;
+      if (input.files == null || input.files!.isEmpty) return;
+      final file = input.files!.first;
+      final reader = html.FileReader();
+      reader.readAsArrayBuffer(file);
+      await reader.onLoad.first;
+      final bytes = reader.result as List<int>?;
+      if (bytes == null) throw Exception('Không đọc được file');
+      fileBytes = Uint8List.fromList(bytes);
+      fileName = file.name;
+    } else {
+      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['backup']);
+      if (result == null || result.files.isEmpty) return;
+      final f = result.files.first;
+      fileBytes = f.bytes ?? await _readFileBytes(f.path!);
+      fileName = f.name;
     }
-    final input = html.FileUploadInputElement();
-    // JSON-only to avoid uploading legacy .sql by mistake
-    input.accept = '.json,application/json';
-    input.click();
-    await input.onChange.first;
-    if (input.files == null || input.files!.isEmpty) return 'No file selected';
-    final file = input.files!.first;
-    final reader = html.FileReader();
-    reader.readAsArrayBuffer(file);
-    await reader.onLoad.first;
-    final bytes = reader.result as List<int>?;
-    if (bytes == null) throw Exception('Không đọc được file');
+    // fileBytes & fileName guaranteed after branches
+    if (!fileName.toLowerCase().endsWith('.backup')) {
+      throw Exception('Vui lòng chọn file .backup hợp lệ');
+    }
 
-    // Choose content-type based on extension
-    final lower = (file.name).toLowerCase();
-    final isSql = lower.endsWith('.sql');
-    if (isSql) {
-      throw Exception('Vui lòng chọn file JSON (.json) để phục hồi một phần dữ liệu');
+    final uri = Uri.parse('${_dio.options.baseUrl}/api/backup/restore');
+    final req = http.MultipartRequest('POST', uri);
+    if (_token != null) req.headers['Authorization'] = 'Bearer $_token';
+    req.files.add(http.MultipartFile.fromBytes('backupFile', fileBytes, filename: fileName, contentType: MediaType('application', 'octet-stream')));
+    final streamed = await req.send();
+    final bodyBytes = await streamed.stream.toBytes();
+    final body = String.fromCharCodes(bodyBytes);
+    if (streamed.statusCode >= 300) {
+      throw Exception('Restore failed: ${streamed.statusCode} $body');
     }
-    final mt = MediaType('application','json');
-    final form = FormData.fromMap({
-      'file': MultipartFile.fromBytes(bytes, filename: file.name, contentType: mt),
-    });
-    try {
-      final res = await _dio.post('/api/backup/restore', data: form);
-      return res.data is String ? res.data as String : null;
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String msg = e.message ?? 'Restore failed';
-      if (data is Map<String, dynamic>) {
-        final m = (data['message']?.toString() ?? '').trim();
-        final er = (data['error']?.toString() ?? '').trim();
-        if (m.isNotEmpty && er.isNotEmpty) msg = '$m: $er';
-        else if (m.isNotEmpty) msg = m;
-      } else if (data is String && data.isNotEmpty) {
-        msg = data;
-      }
-      throw Exception(msg);
-    }
+  }
+
+  // Helper to read file bytes on non-web when FilePicker doesn't inline bytes
+  Future<Uint8List> _readFileBytes(String path) async {
+    return await io.File(path).readAsBytes();
   }
 
   // ===== Reports export (CSV) =====
