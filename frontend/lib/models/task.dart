@@ -47,21 +47,45 @@ class TaskModel {
       id: json['id'],
       title: json['title'] ?? '',
       description: json['description'],
-      startTime: json['start_time'] != null ? DateTime.parse(json['start_time']) : null,
-      endTime: json['end_time'] != null ? DateTime.parse(json['end_time']) : null,
+      startTime: json['start_time'] != null
+          ? DateTime.parse(json['start_time']).toLocal()
+          : null,
+      endTime: json['end_time'] != null
+          ? DateTime.parse(json['end_time']).toLocal()
+          : null,
       status: json['status'] ?? 'todo',
       priority: json['priority'] ?? 'normal',
-      project: (json['Project'] != null) ? ProjectModel.fromJson(json['Project']) : null,
-      createdBy: (json['createdBy'] != null) ? UserModel.fromJson(json['createdBy']) : null,
-      labels: (labelsRaw is List) ? labelsRaw.map((e) => LabelModel.fromJson(e as Map<String,dynamic>)).toList() : [],
-      assignmentType: json['assignment_type'] ?? json['assignmentType'] ?? 'open',
+      project: (json['Project'] != null)
+          ? ProjectModel.fromJson(json['Project'])
+          : null,
+      createdBy: (json['createdBy'] != null)
+          ? UserModel.fromJson(json['createdBy'])
+          : null,
+      labels: (labelsRaw is List)
+          ? labelsRaw
+                .map((e) => LabelModel.fromJson(e as Map<String, dynamic>))
+                .toList()
+          : [],
+      assignmentType:
+          json['assignment_type'] ?? json['assignmentType'] ?? 'open',
       capacity: (json['capacity'] ?? 1) as int,
       departmentId: json['departmentId'] ?? json['department_id'],
       assignments: (assignsRaw is List)
-          ? assignsRaw.map((e) => TaskAssignmentModel.fromJson(e as Map<String, dynamic>)).toList()
+          ? assignsRaw
+                .map(
+                  (e) =>
+                      TaskAssignmentModel.fromJson(e as Map<String, dynamic>),
+                )
+                .toList()
           : [],
-      weight: json['weight'] is int ? json['weight'] : (json['weight'] is num ? (json['weight'] as num).toInt() : null),
-      effectiveWeight: json['effectiveWeight'] is int ? json['effectiveWeight'] : (json['effectiveWeight'] is num ? (json['effectiveWeight'] as num).toInt() : 0),
+      weight: json['weight'] is int
+          ? json['weight']
+          : (json['weight'] is num ? (json['weight'] as num).toInt() : null),
+      effectiveWeight: json['effectiveWeight'] is int
+          ? json['effectiveWeight']
+          : (json['effectiveWeight'] is num
+                ? (json['effectiveWeight'] as num).toInt()
+                : 0),
     );
   }
 }

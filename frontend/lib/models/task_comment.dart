@@ -22,7 +22,9 @@ class TaskCommentModel {
       userId: (json['userId'] ?? json['user_id']) as String,
       content: (json['content'] ?? '').toString(),
       user: (json['User'] != null || json['user'] != null)
-          ? UserModel.fromJson((json['User'] ?? json['user']) as Map<String, dynamic>)
+          ? UserModel.fromJson(
+              (json['User'] ?? json['user']) as Map<String, dynamic>,
+            )
           : null,
     );
   }

@@ -68,8 +68,14 @@ class _HomePageState extends State<HomePage> {
         currentIndex: _index.clamp(0, pages.length - 1),
         onTap: (i) => setState(() => _index = i),
         items: [
-          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
-          const BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Trang chủ',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: 'Lịch',
+          ),
           BottomNavigationBarItem(
             icon: Stack(
               clipBehavior: Clip.none,
@@ -80,19 +86,43 @@ class _HomePageState extends State<HomePage> {
                     right: -6,
                     top: -2,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       constraints: const BoxConstraints(minWidth: 16),
-                      child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 10), textAlign: TextAlign.center),
+                      child: Text(
+                        '$unread',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
               ],
             ),
             label: 'Thông báo',
           ),
-          const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Tài khoản'),
-          if (isAdmin) const BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings), label: 'Quản trị'),
-          if (!isAdmin && isManager) const BottomNavigationBarItem(icon: Icon(Icons.manage_accounts), label: 'Quản lý'),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Tài khoản',
+          ),
+          if (isAdmin)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.admin_panel_settings),
+              label: 'Quản trị',
+            ),
+          if (!isAdmin && isManager)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.manage_accounts),
+              label: 'Quản lý',
+            ),
         ],
       ),
     );

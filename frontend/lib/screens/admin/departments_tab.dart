@@ -32,25 +32,43 @@ class _DepartmentsTabState extends State<DepartmentsTab> {
   Future<void> _showCreate() async {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    final ok = await showDialog<bool>(context: context, builder: (c) {
-      return AlertDialog(
-        title: const Text('Thêm phòng ban'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Tên *')),
-            TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Mô tả')),
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) {
+        return AlertDialog(
+          title: const Text('Thêm phòng ban'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Tên *'),
+              ),
+              TextField(
+                controller: descCtrl,
+                decoration: const InputDecoration(labelText: 'Mô tả'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Lưu'),
+            ),
           ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Hủy')),
-          ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Lưu')),
-        ],
-      );
-    });
+        );
+      },
+    );
     if (ok == true && nameCtrl.text.trim().isNotEmpty) {
       if (!context.mounted) return;
-      await context.read<ApiService>().createDepartment(nameCtrl.text.trim(), description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim());
+      await context.read<ApiService>().createDepartment(
+        nameCtrl.text.trim(),
+        description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+      );
       if (!mounted) return;
     }
   }
@@ -58,38 +76,66 @@ class _DepartmentsTabState extends State<DepartmentsTab> {
   Future<void> _showEdit(DepartmentModel dep) async {
     final nameCtrl = TextEditingController(text: dep.name);
     final descCtrl = TextEditingController(text: dep.description ?? '');
-    final ok = await showDialog<bool>(context: context, builder: (c) {
-      return AlertDialog(
-        title: const Text('Sửa phòng ban'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Tên *')),
-            TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Mô tả')),
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) {
+        return AlertDialog(
+          title: const Text('Sửa phòng ban'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Tên *'),
+              ),
+              TextField(
+                controller: descCtrl,
+                decoration: const InputDecoration(labelText: 'Mô tả'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Cập nhật'),
+            ),
           ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Hủy')),
-          ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Cập nhật')),
-        ],
-      );
-    });
+        );
+      },
+    );
     if (ok == true && nameCtrl.text.trim().isNotEmpty) {
       if (!context.mounted) return;
-      await context.read<ApiService>().updateDepartment(dep.id, name: nameCtrl.text.trim(), description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim());
+      await context.read<ApiService>().updateDepartment(
+        dep.id,
+        name: nameCtrl.text.trim(),
+        description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+      );
       if (!mounted) return;
     }
   }
 
   Future<void> _delete(DepartmentModel dep) async {
-    final ok = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-      title: const Text('Xóa phòng ban'),
-      content: Text('Bạn có chắc chắn xóa "${dep.name}"?'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Hủy')),
-        ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Xóa')),
-      ],
-    ));
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Xóa phòng ban'),
+        content: Text('Bạn có chắc chắn xóa "${dep.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
     if (ok == true) {
       if (!context.mounted) return;
       await context.read<ApiService>().deleteDepartment(dep.id);
@@ -114,7 +160,9 @@ class _DepartmentsTabState extends State<DepartmentsTab> {
                 child: ListTile(
                   leading: const Icon(Icons.apartment),
                   title: Text(dep.name),
-                  subtitle: dep.description == null ? null : Text(dep.description!),
+                  subtitle: dep.description == null
+                      ? null
+                      : Text(dep.description!),
                   onTap: () => _showEdit(dep),
                   trailing: PopupMenuButton<String>(
                     onSelected: (v) {
@@ -131,7 +179,10 @@ class _DepartmentsTabState extends State<DepartmentsTab> {
             },
           ),
         ),
-        if (_loading) const Positioned.fill(child: Center(child: CircularProgressIndicator())),
+        if (_loading)
+          const Positioned.fill(
+            child: Center(child: CircularProgressIndicator()),
+          ),
         Positioned(
           bottom: 16,
           right: 16,
@@ -140,7 +191,7 @@ class _DepartmentsTabState extends State<DepartmentsTab> {
             onPressed: _showCreate,
             child: const Icon(Icons.add),
           ),
-        )
+        ),
       ],
     );
   }

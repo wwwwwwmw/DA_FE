@@ -32,7 +32,12 @@ class UserModel {
     );
   }
 
-  UserModel copyWith({String? name, String? contact, String? employeePin, String? avatarUrl}) => UserModel(
+  UserModel copyWith({
+    String? name,
+    String? contact,
+    String? employeePin,
+    String? avatarUrl,
+  }) => UserModel(
     id: id,
     name: name ?? this.name,
     email: email,

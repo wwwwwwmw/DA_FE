@@ -14,7 +14,7 @@ class _EventReportPageState extends State<EventReportPage> {
   bool _loading = true;
   int _year = DateTime.now().year;
   String _status = ''; // all
-  String _type = '';   // all
+  String _type = ''; // all
   String? _departmentId; // all
   DateTimeRange? _range; // optional override of year
 
@@ -59,7 +59,12 @@ class _EventReportPageState extends State<EventReportPage> {
       return BarChartGroupData(
         x: e.key,
         barRods: [
-          BarChartRodData(toY: e.value.toDouble(), color: const Color(0xFF2D9CDB), width: 12, borderRadius: BorderRadius.circular(4)),
+          BarChartRodData(
+            toY: e.value.toDouble(),
+            color: const Color(0xFF2D9CDB),
+            width: 12,
+            borderRadius: BorderRadius.circular(4),
+          ),
         ],
       );
     }).toList();
@@ -68,7 +73,15 @@ class _EventReportPageState extends State<EventReportPage> {
   List<PieChartSectionData> _buildPieSections(List<Map<String, dynamic>> rows) {
     final total = rows.fold<int>(0, (a, b) => a + ((b['count'] ?? 0) as int));
     if (total == 0) {
-      return [PieChartSectionData(value: 1, color: Colors.grey.shade300, title: 'No data', radius: 50, titleStyle: const TextStyle(fontSize: 10))];
+      return [
+        PieChartSectionData(
+          value: 1,
+          color: Colors.grey.shade300,
+          title: 'No data',
+          radius: 50,
+          titleStyle: const TextStyle(fontSize: 10),
+        ),
+      ];
     }
     final colors = [
       Colors.blue,
@@ -99,7 +112,8 @@ class _EventReportPageState extends State<EventReportPage> {
   }
 
   String _fmtRange(DateTimeRange r) {
-    String fmt(DateTime d) => '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
+    String fmt(DateTime d) =>
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
     return '${fmt(r.start)} → ${fmt(r.end)}';
   }
 
@@ -124,168 +138,318 @@ class _EventReportPageState extends State<EventReportPage> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Wrap(spacing: 12, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('Chế độ:'), const SizedBox(width: 8),
-                      DropdownButton<String>(
-                        value: _range == null ? 'year' : 'range',
-                        items: const [
-                          DropdownMenuItem(value: 'year', child: Text('Theo năm')),
-                          DropdownMenuItem(value: 'range', child: Text('Khoảng thời gian')),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Chế độ:'),
+                          const SizedBox(width: 8),
+                          DropdownButton<String>(
+                            value: _range == null ? 'year' : 'range',
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'year',
+                                child: Text('Theo năm'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'range',
+                                child: Text('Khoảng thời gian'),
+                              ),
+                            ],
+                            onChanged: (v) async {
+                              if (v == null) return;
+                              setState(() {
+                                if (v == 'year') {
+                                  _range = null;
+                                } else {
+                                  _range ??= DateTimeRange(
+                                    start: DateTime(_year, 1, 1),
+                                    end: DateTime(_year, 12, 31, 23, 59, 59),
+                                  );
+                                }
+                              });
+                              await _load();
+                            },
+                          ),
                         ],
-                        onChanged: (v) async {
-                          if (v == null) return;
-                          setState(() {
-                            if (v == 'year') { _range = null; }
-                            else { _range ??= DateTimeRange(start: DateTime(_year,1,1), end: DateTime(_year,12,31,23,59,59)); }
-                          });
-                          await _load();
-                        },
-                      )
-                    ]),
-                    if (_range == null) Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('Năm:'), const SizedBox(width: 8),
-                      DropdownButton<int>(
-                        value: _year,
-                        items: [for (var y = DateTime.now().year - 4; y <= DateTime.now().year + 1; y++) DropdownMenuItem(value: y, child: Text('$y'))],
-                        onChanged: (v) async { if (v == null) return; setState(() => _year = v); await _load(); },
-                      )
-                    ])
-                    else Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text(_range == null ? 'Chọn khoảng thời gian' : _fmtRange(_range!)), const SizedBox(width: 8),
-                      TextButton(
+                      ),
+                      if (_range == null)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('Năm:'),
+                            const SizedBox(width: 8),
+                            DropdownButton<int>(
+                              value: _year,
+                              items: [
+                                for (
+                                  var y = DateTime.now().year - 4;
+                                  y <= DateTime.now().year + 1;
+                                  y++
+                                )
+                                  DropdownMenuItem(value: y, child: Text('$y')),
+                              ],
+                              onChanged: (v) async {
+                                if (v == null) return;
+                                setState(() => _year = v);
+                                await _load();
+                              },
+                            ),
+                          ],
+                        )
+                      else
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _range == null
+                                  ? 'Chọn khoảng thời gian'
+                                  : _fmtRange(_range!),
+                            ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: () async {
+                                final now = DateTime.now();
+                                final picked = await showDateRangePicker(
+                                  context: context,
+                                  firstDate: DateTime(now.year - 5),
+                                  lastDate: DateTime(now.year + 5),
+                                  initialDateRange: _range,
+                                );
+                                if (picked != null) {
+                                  setState(() => _range = picked);
+                                  await _load();
+                                }
+                              },
+                              child: const Text('Chọn'),
+                            ),
+                          ],
+                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Trạng thái:'),
+                          const SizedBox(width: 8),
+                          DropdownButton<String>(
+                            value: _status,
+                            items: const [
+                              DropdownMenuItem(
+                                value: '',
+                                child: Text('Tất cả'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'pending',
+                                child: Text('pending'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'approved',
+                                child: Text('approved'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'rejected',
+                                child: Text('rejected'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'completed',
+                                child: Text('completed'),
+                              ),
+                            ],
+                            onChanged: (v) async {
+                              setState(() => _status = v ?? '');
+                              await _load();
+                            },
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Loại:'),
+                          const SizedBox(width: 8),
+                          DropdownButton<String>(
+                            value: _type,
+                            items: const [
+                              DropdownMenuItem(
+                                value: '',
+                                child: Text('Tất cả'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'work',
+                                child: Text('Lịch công tác'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'meeting',
+                                child: Text('Lịch họp'),
+                              ),
+                            ],
+                            onChanged: (v) async {
+                              setState(() => _type = v ?? '');
+                              await _load();
+                            },
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Phòng ban:'),
+                          const SizedBox(width: 8),
+                          DropdownButton<String?>(
+                            value: _departmentId,
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('Tất cả'),
+                              ),
+                              for (final d in departments)
+                                DropdownMenuItem(
+                                  value: d.id,
+                                  child: Text(d.name),
+                                ),
+                            ],
+                            onChanged: (v) async {
+                              setState(() => _departmentId = v);
+                              await _load();
+                            },
+                          ),
+                        ],
+                      ),
+                      ElevatedButton.icon(
                         onPressed: () async {
-                          final now = DateTime.now();
-                          final picked = await showDateRangePicker(
-                            context: context,
-                            firstDate: DateTime(now.year - 5),
-                            lastDate: DateTime(now.year + 5),
-                            initialDateRange: _range,
+                          final from = _range?.start ?? DateTime(_year, 1, 1);
+                          final to =
+                              _range?.end ??
+                              DateTime(_year, 12, 31, 23, 59, 59);
+                          await context.read<ApiService>().exportEventsCSV(
+                            from: from,
+                            to: to,
+                            status: _status.isEmpty ? null : _status,
+                            type: _type.isEmpty ? null : _type,
+                            departmentId: _departmentId,
                           );
-                          if (picked != null) { setState(() => _range = picked); await _load(); }
                         },
-                        child: const Text('Chọn'),
-                      )
-                    ]),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('Trạng thái:'), const SizedBox(width: 8),
-                      DropdownButton<String>(
-                        value: _status,
-                        items: const [
-                          DropdownMenuItem(value: '', child: Text('Tất cả')),
-                          DropdownMenuItem(value: 'pending', child: Text('pending')),
-                          DropdownMenuItem(value: 'approved', child: Text('approved')),
-                          DropdownMenuItem(value: 'rejected', child: Text('rejected')),
-                          DropdownMenuItem(value: 'completed', child: Text('completed')),
-                        ],
-                        onChanged: (v) async { setState(()=>_status = v ?? ''); await _load(); },
+                        icon: const Icon(Icons.download),
+                        label: const Text('Xuất file CSV'),
                       ),
-                    ]),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('Loại:'), const SizedBox(width: 8),
-                      DropdownButton<String>(
-                        value: _type,
-                        items: const [
-                          DropdownMenuItem(value: '', child: Text('Tất cả')),
-                          DropdownMenuItem(value: 'work', child: Text('Lịch công tác')),
-                          DropdownMenuItem(value: 'meeting', child: Text('Lịch họp')),
-                        ],
-                        onChanged: (v) async { setState(()=>_type = v ?? ''); await _load(); },
-                      ),
-                    ]),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('Phòng ban:'), const SizedBox(width: 8),
-                      DropdownButton<String?>(
-                        value: _departmentId,
-                        items: [
-                          const DropdownMenuItem(value: null, child: Text('Tất cả')),
-                          for (final d in departments) DropdownMenuItem(value: d.id, child: Text(d.name)),
-                        ],
-                        onChanged: (v) async { setState(()=>_departmentId = v); await _load(); },
-                      ),
-                    ]),
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        final from = _range?.start ?? DateTime(_year, 1, 1);
-                        final to = _range?.end ?? DateTime(_year, 12, 31, 23, 59, 59);
-                        await context.read<ApiService>().exportEventsCSV(
-                          from: from,
-                          to: to,
-                          status: _status.isEmpty? null : _status,
-                          type: _type.isEmpty? null : _type,
-                          departmentId: _departmentId,
-                        );
-                      },
-                      icon: const Icon(Icons.download),
-                      label: const Text('Xuất file CSV'),
-                    )
-                  ]),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   Card(
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Số lượng lịch theo tháng', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height: 220,
-                          child: BarChart(
-                            BarChartData(
-                              gridData: const FlGridData(show: false),
-                              titlesData: FlTitlesData(
-                                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28)),
-                                bottomTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    getTitlesWidget: (value, meta) {
-                                      final m = value.toInt();
-                                      if (m < 1 || m > 12) return const SizedBox.shrink();
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 4.0),
-                                        child: Text('$m', style: const TextStyle(fontSize: 10)),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              ),
-                              barGroups: _buildBarGroups(byMonth),
-                              borderData: FlBorderData(show: false),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Số lượng lịch theo tháng',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
-                      ]),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 220,
+                            child: BarChart(
+                              BarChartData(
+                                gridData: const FlGridData(show: false),
+                                titlesData: FlTitlesData(
+                                  leftTitles: const AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 28,
+                                    ),
+                                  ),
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      getTitlesWidget: (value, meta) {
+                                        final m = value.toInt();
+                                        if (m < 1 || m > 12)
+                                          return const SizedBox.shrink();
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 4.0,
+                                          ),
+                                          child: Text(
+                                            '$m',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  rightTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  topTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                ),
+                                barGroups: _buildBarGroups(byMonth),
+                                borderData: FlBorderData(show: false),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Card(
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Phân bố lịch theo phòng ban', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height: 260,
-                          child: PieChart(
-                            PieChartData(
-                              sections: _buildPieSections(byDept),
-                              sectionsSpace: 2,
-                              centerSpaceRadius: 40,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Phân bố lịch theo phòng ban',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: byDept.map((e) => Chip(label: Text('${e['department']}: ${e['count']}'))).toList(),
-                        )
-                      ]),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            height: 260,
+                            child: PieChart(
+                              PieChartData(
+                                sections: _buildPieSections(byDept),
+                                sectionsSpace: 2,
+                                centerSpaceRadius: 40,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: byDept
+                                .map(
+                                  (e) => Chip(
+                                    label: Text(
+                                      '${e['department']}: ${e['count']}',
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

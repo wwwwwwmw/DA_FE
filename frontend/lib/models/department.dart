@@ -19,9 +19,10 @@ class DepartmentModel {
     if (description != null) 'description': description,
   };
 
-  DepartmentModel copyWith({String? name, String? description}) => DepartmentModel(
-    id: id,
-    name: name ?? this.name,
-    description: description ?? this.description,
-  );
+  DepartmentModel copyWith({String? name, String? description}) =>
+      DepartmentModel(
+        id: id,
+        name: name ?? this.name,
+        description: description ?? this.description,
+      );
 }

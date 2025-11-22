@@ -17,6 +17,7 @@ class _ProjectsPageState extends State<ProjectsPage> {
     super.initState();
     context.read<ApiService>().fetchProjects();
   }
+
   @override
   Widget build(BuildContext context) {
     final projects = context.watch<ApiService>().projects;
@@ -29,21 +30,54 @@ class _ProjectsPageState extends State<ProjectsPage> {
           final p = projects[i];
           final pct = (p.progress ?? 0) / 100.0;
           return InkWell(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectDetailPage(projectId: p.id, projectName: p.name))),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    ProjectDetailPage(projectId: p.id, projectName: p.name),
+              ),
+            ),
             child: Stack(
               children: [
                 Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(p.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      if (p.description != null) Text(p.description!, style: const TextStyle(color: Colors.grey)),
-                      const SizedBox(height: 12),
-                      LinearPercentIndicator(percent: pct.clamp(0,1), lineHeight: 8, progressColor: Theme.of(context).colorScheme.primary, backgroundColor: Colors.grey.shade200, barRadius: const Radius.circular(8)),
-                      const SizedBox(height: 4),
-                      Text('${p.progress ?? 0}% hoàn thành', style: const TextStyle(fontSize: 12, color: Colors.black54))
-                    ]),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (p.description != null)
+                          Text(
+                            p.description!,
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        const SizedBox(height: 12),
+                        LinearPercentIndicator(
+                          percent: pct.clamp(0, 1),
+                          lineHeight: 8,
+                          progressColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Colors.grey.shade200,
+                          barRadius: const Radius.circular(8),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${p.progress ?? 0}% hoàn thành',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Positioned(
@@ -52,13 +86,37 @@ class _ProjectsPageState extends State<ProjectsPage> {
                   child: PopupMenuButton<String>(
                     onSelected: (val) async {
                       if (val == 'edit') {
-                        await Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectDetailPage(projectId: p.id, projectName: p.name)));
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ProjectDetailPage(
+                              projectId: p.id,
+                              projectName: p.name,
+                            ),
+                          ),
+                        );
                       } else if (val == 'delete') {
-                        final ok = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Xóa dự án'), content: const Text('Bạn chắc chắn xóa?'), actions: [TextButton(onPressed: ()=>Navigator.pop(ctx,false), child: const Text('Hủy')), ElevatedButton(onPressed: ()=>Navigator.pop(ctx,true), child: const Text('Xóa'))]));
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Xóa dự án'),
+                            content: const Text('Bạn chắc chắn xóa?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Hủy'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Xóa'),
+                              ),
+                            ],
+                          ),
+                        );
                         if (ok == true) {
                           if (!context.mounted) return;
                           await context.read<ApiService>().deleteProject(p.id);
-                          if (context.mounted) setState((){});
+                          if (context.mounted) setState(() {});
                         }
                       }
                     },
@@ -67,87 +125,76 @@ class _ProjectsPageState extends State<ProjectsPage> {
                       PopupMenuItem(value: 'delete', child: Text('Xóa')),
                     ],
                   ),
-                )
+                ),
               ],
             ),
           );
         },
       ),
-      floatingActionButton: (context.read<ApiService>().currentUser?.role == 'employee') ? null : FloatingActionButton(
-        heroTag: 'fab-projects',
-        onPressed: () async {
-          await _createProjectDialog(context);
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton:
+          (context.read<ApiService>().currentUser?.role == 'employee')
+          ? null
+          : FloatingActionButton(
+              heroTag: 'fab-projects',
+              onPressed: () async {
+                await _createProjectDialog(context);
+              },
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
   Future<void> _createProjectDialog(BuildContext context) async {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    bool createEvent = false;
-    DateTime? start;
-    DateTime? end;
-    await showDialog(context: context, builder: (ctx) {
-      return StatefulBuilder(builder: (ctx, setS) {
-        return AlertDialog(
-          title: const Text('Tạo Dự án'),
-          content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Tên')),
-              TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Mô tả')),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                title: const Text('Tạo lịch công tác'),
-                value: createEvent,
-                onChanged: (v) => setS(() => createEvent = v),
+    // Removed work event creation from project dialog
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setS) {
+            return AlertDialog(
+              title: const Text('Tạo Dự án'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(labelText: 'Tên'),
+                    ),
+                    TextField(
+                      controller: descCtrl,
+                      decoration: const InputDecoration(labelText: 'Mô tả'),
+                    ),
+                  ],
+                ),
               ),
-              if (createEvent) ...[
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: () async {
-                    final now = DateTime.now();
-                    final d = await showDatePicker(context: ctx, firstDate: DateTime(now.year-1), lastDate: DateTime(now.year+2), initialDate: now);
-                    if (d == null) return;
-                    final t = await showTimePicker(context: ctx, initialTime: TimeOfDay.now());
-                    if (t == null) return;
-                    setS(() => start = DateTime(d.year,d.month,d.day,t.hour,t.minute));
-                  },
-                  child: Text(start==null? 'Chọn thời gian bắt đầu' : start.toString()),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Hủy'),
                 ),
-                OutlinedButton(
+                ElevatedButton(
                   onPressed: () async {
-                    final now = DateTime.now();
-                    final d = await showDatePicker(context: ctx, firstDate: DateTime(now.year-1), lastDate: DateTime(now.year+2), initialDate: now);
-                    if (d == null) return;
-                    final t = await showTimePicker(context: ctx, initialTime: TimeOfDay.now());
-                    if (t == null) return;
-                    setS(() => end = DateTime(d.year,d.month,d.day,t.hour,t.minute));
+                    if (nameCtrl.text.trim().isEmpty) return;
+                    final api = context.read<ApiService>();
+                    await api.createProject(
+                      name: nameCtrl.text.trim(),
+                      description: descCtrl.text.trim().isEmpty
+                          ? null
+                          : descCtrl.text.trim(),
+                    );
+                    if (context.mounted) Navigator.pop(ctx);
                   },
-                  child: Text(end==null? 'Chọn thời gian kết thúc' : end.toString()),
+                  child: const Text('Tạo'),
                 ),
-              ]
-            ]),
-          ),
-          actions: [
-            TextButton(onPressed: ()=> Navigator.pop(ctx), child: const Text('Hủy')),
-            ElevatedButton(onPressed: () async {
-              if (nameCtrl.text.trim().isEmpty) return;
-              final api = context.read<ApiService>();
-              await api.createProject(
-                name: nameCtrl.text.trim(),
-                description: descCtrl.text.trim().isEmpty? null : descCtrl.text.trim(),
-                createEvent: createEvent,
-                eventStart: start,
-                eventEnd: end,
-              );
-              if (context.mounted) Navigator.pop(ctx);
-            }, child: const Text('Tạo'))
-          ],
+              ],
+            );
+          },
         );
-      });
-    });
+      },
+    );
     setState(() {});
   }
 }

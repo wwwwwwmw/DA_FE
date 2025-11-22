@@ -7,9 +7,10 @@ import 'dart:io' as io; // Safe: guarded usages with !kIsWeb
 import 'package:file_picker/file_picker.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:http/http.dart' as http;
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+// Conditional import: provides real dart:html on web, stubs elsewhere.
+import 'html_stub.dart' if (dart.library.html) 'html_web.dart' as html;
 import 'package:url_launcher/url_launcher_string.dart';
+import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../models/event.dart';
@@ -29,18 +30,28 @@ class ApiService extends ChangeNotifier {
   List<NotificationModel> notifications = [];
   List<DepartmentModel> departments = [];
   List<RoomModel> rooms = [];
-  
+
   // Admin caches (lightweight)
   List<UserModel> _adminUsersCache = [];
   List<TaskModel> tasks = [];
   List<ProjectModel> projects = [];
-  Map<String,int> taskStats = { 'todo':0,'in_progress':0,'completed':0 };
+  Map<String, int> taskStats = {'todo': 0, 'in_progress': 0, 'completed': 0};
   // Reports state
   List<Map<String, dynamic>> reportEventsByMonth = [];
   List<Map<String, dynamic>> reportEventsByDepartment = [];
 
   ApiService({required this.baseUrl}) {
-    _dio = Dio(BaseOptions(baseUrl: baseUrl));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        headers: {
+          // Bypass ngrok free plan browser warning for API calls
+          'ngrok-skip-browser-warning': 'true',
+        },
+        // Allow 4xx for manual handling (avoid noisy stack traces for validation errors)
+        validateStatus: (code) => code != null && code < 500,
+      ),
+    );
   }
 
   void setToken(String? token) {
@@ -55,7 +66,10 @@ class ApiService extends ChangeNotifier {
   String? get token => _token;
 
   Future<bool> login(String email, String password) async {
-    final res = await _dio.post('/api/auth/login', data: { 'email': email, 'password': password });
+    final res = await _dio.post(
+      '/api/auth/login',
+      data: {'email': email, 'password': password},
+    );
     final data = res.data;
     final token = data['token'] as String;
     final user = UserModel.fromJson(data['user']);
@@ -66,6 +80,7 @@ class ApiService extends ChangeNotifier {
     notifyListeners();
     return true;
   }
+
   Future<void> loadMe() async {
     if (_token == null) return;
     final res = await _dio.get('/api/auth/me');
@@ -88,33 +103,57 @@ class ApiService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<EventModel> createEvent({required String title, DateTime? start, DateTime? end, String? description, String? roomId, List<String>? participantIds, List<String>? departmentIds, bool isGlobal = false, String type = 'work'}) async {
-    final res = await _dio.post('/api/events', data: {
-      'title': title,
-      'type': type,
-      if (description != null) 'description': description,
-      if (start != null) 'start_time': start.toIso8601String(),
-      if (end != null) 'end_time': end.toIso8601String(),
-      if (roomId != null) 'roomId': roomId,
-      if (participantIds != null) 'participantIds': participantIds,
-      if (departmentIds != null) 'departmentIds': departmentIds,
-      if (isGlobal) 'isGlobal': true,
-    });
+  Future<EventModel> createEvent({
+    required String title,
+    DateTime? start,
+    DateTime? end,
+    String? description,
+    String? roomId,
+    List<String>? participantIds,
+    List<String>? departmentIds,
+    bool isGlobal = false,
+    String type = 'work',
+  }) async {
+    final res = await _dio.post(
+      '/api/events',
+      data: {
+        'title': title,
+        'type': type,
+        if (description != null) 'description': description,
+        if (start != null) 'start_time': start.toIso8601String(),
+        if (end != null) 'end_time': end.toIso8601String(),
+        if (roomId != null) 'roomId': roomId,
+        if (participantIds != null) 'participantIds': participantIds,
+        if (departmentIds != null) 'departmentIds': departmentIds,
+        if (isGlobal) 'isGlobal': true,
+      },
+    );
     final ev = EventModel.fromJson(res.data);
     events.insert(0, ev);
     notifyListeners();
     return ev;
   }
 
-  Future<EventModel> updateEvent(String id, {String? title, DateTime? start, DateTime? end, String? description, String? roomId, String? status}) async {
-    final res = await _dio.put('/api/events/$id', data: {
-      if (title != null) 'title': title,
-      if (description != null) 'description': description,
-      if (start != null) 'start_time': start.toIso8601String(),
-      if (end != null) 'end_time': end.toIso8601String(),
-      if (roomId != null) 'roomId': roomId,
-      if (status != null) 'status': status,
-    });
+  Future<EventModel> updateEvent(
+    String id, {
+    String? title,
+    DateTime? start,
+    DateTime? end,
+    String? description,
+    String? roomId,
+    String? status,
+  }) async {
+    final res = await _dio.put(
+      '/api/events/$id',
+      data: {
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        if (start != null) 'start_time': start.toIso8601String(),
+        if (end != null) 'end_time': end.toIso8601String(),
+        if (roomId != null) 'roomId': roomId,
+        if (status != null) 'status': status,
+      },
+    );
     final ev = EventModel.fromJson(res.data);
     events = events.map((e) => e.id == id ? ev : e).toList();
     notifyListeners();
@@ -129,15 +168,21 @@ class ApiService extends ChangeNotifier {
 
   Future<void> fetchNotifications() async {
     final res = await _dio.get('/api/notifications');
-    final list = (res.data as List).map((e) => NotificationModel.fromJson(e)).toList();
+    final list = (res.data as List)
+        .map((e) => NotificationModel.fromJson(e))
+        .toList();
     notifications = list;
+    // Emit local notifications for newly received items (deduped)
+    await NotificationService.instance.showNewServerNotifications(list);
     notifyListeners();
   }
 
   // ============== Departments ==============
   Future<void> fetchDepartments() async {
     final res = await _dio.get('/api/departments');
-    departments = (res.data as List).map((e) => DepartmentModel.fromJson(e)).toList();
+    departments = (res.data as List)
+        .map((e) => DepartmentModel.fromJson(e))
+        .toList();
     notifyListeners();
   }
 
@@ -148,28 +193,41 @@ class ApiService extends ChangeNotifier {
   }
 
   Future<TaskModel> fetchTaskById(String id) async {
-    final res = await _dio.get('/api/tasks', queryParameters: { 'id': id, 'limit': 1 });
+    final res = await _dio.get(
+      '/api/tasks',
+      queryParameters: {'id': id, 'limit': 1},
+    );
     final list = (res.data as List).map((e) => TaskModel.fromJson(e)).toList();
     if (list.isEmpty) throw Exception('Task not found');
     return list.first;
   }
 
-  Future<DepartmentModel> createDepartment(String name, {String? description}) async {
-    final res = await _dio.post('/api/departments', data: {
-      'name': name,
-      if (description != null) 'description': description,
-    });
+  Future<DepartmentModel> createDepartment(
+    String name, {
+    String? description,
+  }) async {
+    final res = await _dio.post(
+      '/api/departments',
+      data: {'name': name, if (description != null) 'description': description},
+    );
     final dep = DepartmentModel.fromJson(res.data);
     departments.add(dep);
     notifyListeners();
     return dep;
   }
 
-  Future<DepartmentModel> updateDepartment(String id, {String? name, String? description}) async {
-    final res = await _dio.put('/api/departments/$id', data: {
-      if (name != null) 'name': name,
-      if (description != null) 'description': description,
-    });
+  Future<DepartmentModel> updateDepartment(
+    String id, {
+    String? name,
+    String? description,
+  }) async {
+    final res = await _dio.put(
+      '/api/departments/$id',
+      data: {
+        if (name != null) 'name': name,
+        if (description != null) 'description': description,
+      },
+    );
     final dep = DepartmentModel.fromJson(res.data);
     departments = departments.map((d) => d.id == id ? dep : d).toList();
     notifyListeners();
@@ -189,24 +247,39 @@ class ApiService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<RoomModel> createRoom(String name, {String? location, int? capacity}) async {
-    final res = await _dio.post('/api/rooms', data: {
-      'name': name,
-      if (location != null) 'location': location,
-      if (capacity != null) 'capacity': capacity,
-    });
+  Future<RoomModel> createRoom(
+    String name, {
+    String? location,
+    int? capacity,
+  }) async {
+    final res = await _dio.post(
+      '/api/rooms',
+      data: {
+        'name': name,
+        if (location != null) 'location': location,
+        if (capacity != null) 'capacity': capacity,
+      },
+    );
     final room = RoomModel.fromJson(res.data);
     rooms.add(room);
     notifyListeners();
     return room;
   }
 
-  Future<RoomModel> updateRoom(String id, {String? name, String? location, int? capacity}) async {
-    final res = await _dio.put('/api/rooms/$id', data: {
-      if (name != null) 'name': name,
-      if (location != null) 'location': location,
-      if (capacity != null) 'capacity': capacity,
-    });
+  Future<RoomModel> updateRoom(
+    String id, {
+    String? name,
+    String? location,
+    int? capacity,
+  }) async {
+    final res = await _dio.put(
+      '/api/rooms/$id',
+      data: {
+        if (name != null) 'name': name,
+        if (location != null) 'location': location,
+        if (capacity != null) 'capacity': capacity,
+      },
+    );
     final room = RoomModel.fromJson(res.data);
     rooms = rooms.map((r) => r.id == id ? room : r).toList();
     notifyListeners();
@@ -225,23 +298,30 @@ class ApiService extends ChangeNotifier {
   }
 
   Future<void> rsvp(String participantId, String status) async {
-    await _dio.put('/api/participants/$participantId', data: {'status': status});
+    await _dio.put(
+      '/api/participants/$participantId',
+      data: {'status': status},
+    );
     await fetchEvents();
   }
 
-  Future<void> requestParticipantAdjustment(String participantId, String note) async {
-    await _dio.post('/api/participants/$participantId/request-adjustment', data: {
-      'note': note,
-    });
+  Future<void> requestParticipantAdjustment(
+    String participantId,
+    String note,
+  ) async {
+    await _dio.post(
+      '/api/participants/$participantId/request-adjustment',
+      data: {'note': note},
+    );
     await fetchEvents();
   }
 
   // ============== Admin APIs ==============
   Future<List<UserModel>> listUsers({int limit = 50, int offset = 0}) async {
-    final res = await _dio.get('/api/users', queryParameters: {
-      'limit': limit,
-      'offset': offset,
-    });
+    final res = await _dio.get(
+      '/api/users',
+      queryParameters: {'limit': limit, 'offset': offset},
+    );
     final list = (res.data as List).map((e) => UserModel.fromJson(e)).toList();
     if (offset == 0) {
       _adminUsersCache = list;
@@ -251,29 +331,49 @@ class ApiService extends ChangeNotifier {
     return list;
   }
 
-  Future<UserModel> adminCreateUser({required String name, required String email, required String password, String role = 'employee', String? departmentId}) async {
-    final res = await _dio.post('/api/users', data: {
-      'name': name,
-      'email': email,
-      'password': password,
-      'role': role,
-      if (departmentId != null) 'departmentId': departmentId,
-    });
+  Future<UserModel> adminCreateUser({
+    required String name,
+    required String email,
+    required String password,
+    String role = 'employee',
+    String? departmentId,
+  }) async {
+    final res = await _dio.post(
+      '/api/users',
+      data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'role': role,
+        if (departmentId != null) 'departmentId': departmentId,
+      },
+    );
     final user = UserModel.fromJson(res.data);
     _adminUsersCache.insert(0, user);
     notifyListeners();
     return user;
   }
 
-  Future<UserModel> adminUpdateUser(String id, {String? name, String? departmentId, String? password, String? role}) async {
-    final res = await _dio.put('/api/users/$id', data: {
-      if (name != null) 'name': name,
-      if (departmentId != null) 'departmentId': departmentId,
-      if (password != null) 'password': password,
-      if (role != null) 'role': role,
-    });
+  Future<UserModel> adminUpdateUser(
+    String id, {
+    String? name,
+    String? departmentId,
+    String? password,
+    String? role,
+  }) async {
+    final res = await _dio.put(
+      '/api/users/$id',
+      data: {
+        if (name != null) 'name': name,
+        if (departmentId != null) 'departmentId': departmentId,
+        if (password != null) 'password': password,
+        if (role != null) 'role': role,
+      },
+    );
     final user = UserModel.fromJson(res.data);
-    _adminUsersCache = _adminUsersCache.map((u) => u.id == id ? user : u).toList();
+    _adminUsersCache = _adminUsersCache
+        .map((u) => u.id == id ? user : u)
+        .toList();
     notifyListeners();
     return user;
   }
@@ -284,14 +384,22 @@ class ApiService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<UserModel> updateProfile({String? name, String? contact, String? employeePin, String? avatarUrl}) async {
+  Future<UserModel> updateProfile({
+    String? name,
+    String? contact,
+    String? employeePin,
+    String? avatarUrl,
+  }) async {
     if (currentUser == null) throw Exception('No user');
-    final res = await _dio.put('/api/users/${currentUser!.id}', data: {
-      if (name != null) 'name': name,
-      if (contact != null) 'contact': contact,
-      if (employeePin != null) 'employeePin': employeePin,
-      if (avatarUrl != null) 'avatarUrl': avatarUrl,
-    });
+    final res = await _dio.put(
+      '/api/users/${currentUser!.id}',
+      data: {
+        if (name != null) 'name': name,
+        if (contact != null) 'contact': contact,
+        if (employeePin != null) 'employeePin': employeePin,
+        if (avatarUrl != null) 'avatarUrl': avatarUrl,
+      },
+    );
     currentUser = UserModel.fromJson(res.data);
     notifyListeners();
     return currentUser!;
@@ -299,59 +407,99 @@ class ApiService extends ChangeNotifier {
 
   // ============== Tasks / Projects ==============
   Future<void> fetchTasks({String? status, String? projectId}) async {
-    final res = await _dio.get('/api/tasks', queryParameters: {
-      if (status != null) 'status': status,
-      if (projectId != null) 'projectId': projectId,
-      'limit': 200,
-    });
+    final res = await _dio.get(
+      '/api/tasks',
+      queryParameters: {
+        if (status != null) 'status': status,
+        if (projectId != null) 'projectId': projectId,
+        'limit': 200,
+      },
+    );
     tasks = (res.data as List).map((e) => TaskModel.fromJson(e)).toList();
+    // Re-schedule task reminders for current user
+    await NotificationService.instance.scheduleTaskReminders(
+      tasks,
+      currentUserId: currentUser?.id,
+    );
     notifyListeners();
   }
 
-  Future<TaskModel> createTask({required String title, String? description, DateTime? start, DateTime? end, String? status, String? projectId, String? priority, List<String>? labelIds, String assignmentType = 'open', int capacity = 1, String? departmentId, int? weight}) async {
-    final res = await _dio.post('/api/tasks', data: {
-      'title': title,
-      if (description != null) 'description': description,
-      if (start != null) 'start_time': start.toIso8601String(),
-      if (end != null) 'end_time': end.toIso8601String(),
-      if (status != null) 'status': status,
-      if (projectId != null) 'projectId': projectId,
-      if (priority != null) 'priority': priority,
-      if (labelIds != null) 'labelIds': labelIds,
-      'assignment_type': assignmentType,
-      'capacity': capacity,
-      if (departmentId != null) 'departmentId': departmentId,
-      if (weight != null) 'weight': weight,
-    });
+  Future<TaskModel> createTask({
+    required String title,
+    String? description,
+    DateTime? start,
+    DateTime? end,
+    String? status,
+    String? projectId,
+    String? priority,
+    List<String>? labelIds,
+    String assignmentType = 'open',
+    int capacity = 1,
+    String? departmentId,
+    int? weight,
+  }) async {
+    final res = await _dio.post(
+      '/api/tasks',
+      data: {
+        'title': title,
+        if (description != null) 'description': description,
+        if (start != null) 'start_time': start.toIso8601String(),
+        if (end != null) 'end_time': end.toIso8601String(),
+        if (status != null) 'status': status,
+        if (projectId != null) 'projectId': projectId,
+        if (priority != null) 'priority': priority,
+        if (labelIds != null) 'labelIds': labelIds,
+        'assignment_type': assignmentType,
+        'capacity': capacity,
+        if (departmentId != null) 'departmentId': departmentId,
+        if (weight != null) 'weight': weight,
+      },
+    );
     final task = TaskModel.fromJson(res.data);
     tasks.insert(0, task);
     notifyListeners();
     return task;
   }
 
-  Future<TaskModel> updateTask(String id, {String? title, String? description, DateTime? start, DateTime? end, String? status, String? projectId, String? priority, List<String>? labelIds, String? assignmentType, int? capacity, int? weight}) async {
-    final res = await _dio.put('/api/tasks/$id', data: {
-      if (title != null) 'title': title,
-      if (description != null) 'description': description,
-      if (start != null) 'start_time': start.toIso8601String(),
-      if (end != null) 'end_time': end.toIso8601String(),
-      if (status != null) 'status': status,
-      if (projectId != null) 'projectId': projectId,
-      if (priority != null) 'priority': priority,
-      if (labelIds != null) 'labelIds': labelIds,
-      if (assignmentType != null) 'assignment_type': assignmentType,
-      if (capacity != null) 'capacity': capacity,
-      if (weight != null) 'weight': weight,
-    });
+  Future<TaskModel> updateTask(
+    String id, {
+    String? title,
+    String? description,
+    DateTime? start,
+    DateTime? end,
+    String? status,
+    String? projectId,
+    String? priority,
+    List<String>? labelIds,
+    String? assignmentType,
+    int? capacity,
+    int? weight,
+  }) async {
+    final res = await _dio.put(
+      '/api/tasks/$id',
+      data: {
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        if (start != null) 'start_time': start.toIso8601String(),
+        if (end != null) 'end_time': end.toIso8601String(),
+        if (status != null) 'status': status,
+        if (projectId != null) 'projectId': projectId,
+        if (priority != null) 'priority': priority,
+        if (labelIds != null) 'labelIds': labelIds,
+        if (assignmentType != null) 'assignment_type': assignmentType,
+        if (capacity != null) 'capacity': capacity,
+        if (weight != null) 'weight': weight,
+      },
+    );
     final task = TaskModel.fromJson(res.data);
-  tasks = tasks.map((t) => t.id == id ? task : t).toList();
+    tasks = tasks.map((t) => t.id == id ? task : t).toList();
     notifyListeners();
     return task;
   }
 
   Future<void> deleteTask(String id) async {
     await _dio.delete('/api/tasks/$id');
-  tasks.removeWhere((t) => t.id == id);
+    tasks.removeWhere((t) => t.id == id);
     notifyListeners();
   }
 
@@ -367,34 +515,67 @@ class ApiService extends ChangeNotifier {
   }
 
   // ============== Reports ==============
-  Future<void> fetchReportEventsByMonth({int? year, String? status, String? type, String? departmentId, DateTime? from, DateTime? to}) async {
-    final res = await _dio.get('/api/reports/eventsByMonth', queryParameters: {
-      if (year != null) 'year': year,
-      if (status != null && status.isNotEmpty) 'status': status,
-      if (type != null && type.isNotEmpty) 'type': type,
-      if (departmentId != null && departmentId.isNotEmpty) 'departmentId': departmentId,
-      if (from != null) 'from': from.toIso8601String(),
-      if (to != null) 'to': to.toIso8601String(),
-    });
-    final list = (res.data as List).map<Map<String, dynamic>>((e) => {
-      'month': (e['month'] is int) ? e['month'] : int.tryParse('${e['month']}') ?? 0,
-      'count': (e['count'] is int) ? e['count'] : int.tryParse('${e['count']}') ?? 0,
-    }).toList();
+  Future<void> fetchReportEventsByMonth({
+    int? year,
+    String? status,
+    String? type,
+    String? departmentId,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final res = await _dio.get(
+      '/api/reports/eventsByMonth',
+      queryParameters: {
+        if (year != null) 'year': year,
+        if (status != null && status.isNotEmpty) 'status': status,
+        if (type != null && type.isNotEmpty) 'type': type,
+        if (departmentId != null && departmentId.isNotEmpty)
+          'departmentId': departmentId,
+        if (from != null) 'from': from.toIso8601String(),
+        if (to != null) 'to': to.toIso8601String(),
+      },
+    );
+    final list = (res.data as List)
+        .map<Map<String, dynamic>>(
+          (e) => {
+            'month': (e['month'] is int)
+                ? e['month']
+                : int.tryParse('${e['month']}') ?? 0,
+            'count': (e['count'] is int)
+                ? e['count']
+                : int.tryParse('${e['count']}') ?? 0,
+          },
+        )
+        .toList();
     reportEventsByMonth = list;
     notifyListeners();
   }
 
-  Future<void> fetchReportEventsByDepartment({String? status, String? type, DateTime? from, DateTime? to}) async {
-    final res = await _dio.get('/api/reports/eventsByDepartment', queryParameters: {
-      if (status != null && status.isNotEmpty) 'status': status,
-      if (type != null && type.isNotEmpty) 'type': type,
-      if (from != null) 'from': from.toIso8601String(),
-      if (to != null) 'to': to.toIso8601String(),
-    });
-    final list = (res.data as List).map<Map<String, dynamic>>((e) => {
-      'department': e['department']?.toString() ?? 'Khác',
-      'count': (e['count'] is int) ? e['count'] : int.tryParse('${e['count']}') ?? 0,
-    }).toList();
+  Future<void> fetchReportEventsByDepartment({
+    String? status,
+    String? type,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final res = await _dio.get(
+      '/api/reports/eventsByDepartment',
+      queryParameters: {
+        if (status != null && status.isNotEmpty) 'status': status,
+        if (type != null && type.isNotEmpty) 'type': type,
+        if (from != null) 'from': from.toIso8601String(),
+        if (to != null) 'to': to.toIso8601String(),
+      },
+    );
+    final list = (res.data as List)
+        .map<Map<String, dynamic>>(
+          (e) => {
+            'department': e['department']?.toString() ?? 'Khác',
+            'count': (e['count'] is int)
+                ? e['count']
+                : int.tryParse('${e['count']}') ?? 0,
+          },
+        )
+        .toList();
     reportEventsByDepartment = list;
     notifyListeners();
   }
@@ -405,26 +586,43 @@ class ApiService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<ProjectModel> createProject({required String name, String? description, bool createEvent = false, DateTime? eventStart, DateTime? eventEnd, String? roomId}) async {
-    final res = await _dio.post('/api/projects', data: {
-      'name': name,
-      if (description != null) 'description': description,
-      if (createEvent) 'createEvent': true,
-      if (eventStart != null) 'eventStart': eventStart.toIso8601String(),
-      if (eventEnd != null) 'eventEnd': eventEnd.toIso8601String(),
-      if (roomId != null) 'roomId': roomId,
-    });
+  Future<ProjectModel> createProject({
+    required String name,
+    String? description,
+    bool createEvent = false,
+    DateTime? eventStart,
+    DateTime? eventEnd,
+    String? roomId,
+  }) async {
+    final res = await _dio.post(
+      '/api/projects',
+      data: {
+        'name': name,
+        if (description != null) 'description': description,
+        if (createEvent) 'createEvent': true,
+        if (eventStart != null) 'eventStart': eventStart.toIso8601String(),
+        if (eventEnd != null) 'eventEnd': eventEnd.toIso8601String(),
+        if (roomId != null) 'roomId': roomId,
+      },
+    );
     final p = ProjectModel.fromJson(res.data);
     projects.insert(0, p);
     notifyListeners();
     return p;
   }
 
-  Future<ProjectModel> updateProject(String id, {String? name, String? description}) async {
-    final res = await _dio.put('/api/projects/$id', data: {
-      if (name != null) 'name': name,
-      if (description != null) 'description': description,
-    });
+  Future<ProjectModel> updateProject(
+    String id, {
+    String? name,
+    String? description,
+  }) async {
+    final res = await _dio.put(
+      '/api/projects/$id',
+      data: {
+        if (name != null) 'name': name,
+        if (description != null) 'description': description,
+      },
+    );
     final p = ProjectModel.fromJson(res.data);
     projects = projects.map((e) => e.id == id ? p : e).toList();
     notifyListeners();
@@ -437,44 +635,54 @@ class ApiService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<UserModel> managerCreateEmployee({required String name, required String email, required String password}) async {
-    final res = await _dio.post('/api/users', data: {
-      'name': name,
-      'email': email,
-      'password': password,
-      'role': 'employee',
-      if (currentUser?.departmentId != null) 'departmentId': currentUser!.departmentId,
-    });
+  Future<UserModel> managerCreateEmployee({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    final res = await _dio.post(
+      '/api/users',
+      data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'role': 'employee',
+        if (currentUser?.departmentId != null)
+          'departmentId': currentUser!.departmentId,
+      },
+    );
     return UserModel.fromJson(res.data);
   }
 
   Future<void> rejectTask(String taskId, String reason) async {
-    await _dio.post('/api/tasks/$taskId/reject', data: { 'reason': reason });
+    await _dio.post('/api/tasks/$taskId/reject', data: {'reason': reason});
     await fetchTasks();
   }
 
   Future<void> approveTaskRejection(String taskId, {String? userId}) async {
-    await _dio.post('/api/tasks/$taskId/rejection/approve', data: {
-      if (userId != null) 'userId': userId,
-    });
+    await _dio.post(
+      '/api/tasks/$taskId/rejection/approve',
+      data: {if (userId != null) 'userId': userId},
+    );
     await fetchTasks();
     await fetchNotifications();
   }
 
   Future<void> denyTaskRejection(String taskId, {String? userId}) async {
-    await _dio.post('/api/tasks/$taskId/rejection/deny', data: {
-      if (userId != null) 'userId': userId,
-    });
+    await _dio.post(
+      '/api/tasks/$taskId/rejection/deny',
+      data: {if (userId != null) 'userId': userId},
+    );
     await fetchTasks();
     await fetchNotifications();
   }
 
   // Read-only list of tasks for a given project, without mutating global state
   Future<List<TaskModel>> listTasksForProject(String projectId) async {
-    final res = await _dio.get('/api/tasks', queryParameters: {
-      'projectId': projectId,
-      'limit': 200,
-    });
+    final res = await _dio.get(
+      '/api/tasks',
+      queryParameters: {'projectId': projectId, 'limit': 200},
+    );
     return (res.data as List).map((e) => TaskModel.fromJson(e)).toList();
   }
 
@@ -485,7 +693,7 @@ class ApiService extends ChangeNotifier {
   }
 
   Future<void> assignTask(String taskId, String userId) async {
-    await _dio.post('/api/tasks/$taskId/assign', data: { 'userId': userId });
+    await _dio.post('/api/tasks/$taskId/assign', data: {'userId': userId});
     await fetchTasks();
   }
 
@@ -495,26 +703,34 @@ class ApiService extends ChangeNotifier {
   }
 
   Future<void> updateTaskProgress(String taskId, int progress) async {
-    await _dio.put('/api/tasks/$taskId/progress', data: { 'progress': progress });
+    await _dio.put('/api/tasks/$taskId/progress', data: {'progress': progress});
     await fetchTasks();
   }
 
   // ===== Task Comments =====
   Future<List<TaskCommentModel>> fetchTaskComments(String taskId) async {
     final res = await _dio.get('/api/tasks/$taskId/comments');
-    final list = (res.data as List).map((e) => TaskCommentModel.fromJson(e as Map<String, dynamic>)).toList();
+    final list = (res.data as List)
+        .map((e) => TaskCommentModel.fromJson(e as Map<String, dynamic>))
+        .toList();
     return list;
   }
 
   Future<TaskCommentModel> addTaskComment(String taskId, String content) async {
-    final res = await _dio.post('/api/tasks/$taskId/comments', data: { 'content': content });
+    final res = await _dio.post(
+      '/api/tasks/$taskId/comments',
+      data: {'content': content},
+    );
     return TaskCommentModel.fromJson(res.data as Map<String, dynamic>);
   }
 
   // ===== System / Backup =====
   // Download raw backup bytes (.backup custom format) and return for caller handling
   Future<Uint8List> downloadBackupBytes() async {
-    final res = await _dio.get<List<int>>('/api/backup/create', options: Options(responseType: ResponseType.bytes));
+    final res = await _dio.get<List<int>>(
+      '/api/backup/create',
+      options: Options(responseType: ResponseType.bytes),
+    );
     final data = res.data;
     if (data == null) throw Exception('No backup data received');
     return Uint8List.fromList(data);
@@ -535,7 +751,11 @@ class ApiService extends ChangeNotifier {
       anchor.remove();
       html.Url.revokeObjectUrl(url);
     } else {
-      await FileSaver.instance.saveFile(name: filename, bytes: bytes, mimeType: MimeType.other); // falls back to generic
+      await FileSaver.instance.saveFile(
+        name: filename,
+        bytes: bytes,
+        mimeType: MimeType.other,
+      ); // falls back to generic
     }
   }
 
@@ -558,7 +778,10 @@ class ApiService extends ChangeNotifier {
       fileBytes = Uint8List.fromList(bytes);
       fileName = file.name;
     } else {
-      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['backup']);
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['backup'],
+      );
       if (result == null || result.files.isEmpty) return;
       final f = result.files.first;
       fileBytes = f.bytes ?? await _readFileBytes(f.path!);
@@ -572,7 +795,16 @@ class ApiService extends ChangeNotifier {
     final uri = Uri.parse('${_dio.options.baseUrl}/api/backup/restore');
     final req = http.MultipartRequest('POST', uri);
     if (_token != null) req.headers['Authorization'] = 'Bearer $_token';
-    req.files.add(http.MultipartFile.fromBytes('backupFile', fileBytes, filename: fileName, contentType: MediaType('application', 'octet-stream')));
+    // Ensure ngrok interstitial is skipped for multipart uploads
+    req.headers['ngrok-skip-browser-warning'] = 'true';
+    req.files.add(
+      http.MultipartFile.fromBytes(
+        'backupFile',
+        fileBytes,
+        filename: fileName,
+        contentType: MediaType('application', 'octet-stream'),
+      ),
+    );
     final streamed = await req.send();
     final bodyBytes = await streamed.stream.toBytes();
     final body = String.fromCharCodes(bodyBytes);
@@ -587,42 +819,68 @@ class ApiService extends ChangeNotifier {
   }
 
   // ===== Reports export (CSV) =====
-  Future<void> exportEventsCSV({DateTime? from, DateTime? to, String? status, String? type, String? departmentId}) async {
+  Future<void> exportEventsCSV({
+    DateTime? from,
+    DateTime? to,
+    String? status,
+    String? type,
+    String? departmentId,
+  }) async {
     // Build URL with optional from/to and token (for url_launcher without headers)
     final params = <String, String>{};
     if (from != null) params['from'] = from.toIso8601String();
     if (to != null) params['to'] = to.toIso8601String();
     if (status != null && status.isNotEmpty) params['status'] = status;
     if (type != null && type.isNotEmpty) params['type'] = type;
-    if (departmentId != null && departmentId.isNotEmpty) params['departmentId'] = departmentId;
+    if (departmentId != null && departmentId.isNotEmpty)
+      params['departmentId'] = departmentId;
     if (_token != null) params['token'] = _token!;
-    final qs = params.entries.map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}').join('&');
-    final url = '${_dio.options.baseUrl}/api/reports/export/events${qs.isNotEmpty ? '?$qs' : ''}';
+    final qs = params.entries
+        .map(
+          (e) =>
+              '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}',
+        )
+        .join('&');
+    final url =
+        '${_dio.options.baseUrl}/api/reports/export/events${qs.isNotEmpty ? '?$qs' : ''}';
 
-    // For web/mobile, use url_launcher so browser downloads respecting Content-Disposition
-    final ok = await launchUrlString(url, mode: LaunchMode.externalApplication);
-    if (!ok) {
-      // Fallback: try direct GET to trigger download behavior (web may still need blob)
-      if (kIsWeb) {
-        final res = await _dio.get<List<int>>('/api/reports/export/events',
-            queryParameters: params..remove('token'),
-            options: Options(responseType: ResponseType.bytes));
-        final bytes = res.data;
-        if (bytes == null) throw Exception('No CSV data');
-        String filename = 'events.csv';
-        final cd = res.headers.map['content-disposition']?.join(';') ?? '';
-        final match = RegExp(r'filename\*=UTF-8\''"?([^";]+)"?|filename="?([^";]+)"?').firstMatch(cd);
-        if (match != null) filename = match.group(1) ?? match.group(2) ?? filename;
-        final blob = html.Blob([bytes], 'text/csv');
-        final blobUrl = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: blobUrl)..download = filename;
-        html.document.body?.append(anchor);
-        anchor.click();
-        anchor.remove();
-        html.Url.revokeObjectUrl(blobUrl);
-      } else {
-        // On mobile/desktop without a browser handler, simply issue the GET to ensure server reachable
-        await _dio.get('/api/reports/export/events', queryParameters: params..remove('token'));
+    // On web, avoid opening external tab (ngrok interstitial). Download via bytes + blob.
+    if (kIsWeb) {
+      final res = await _dio.get<List<int>>(
+        '/api/reports/export/events',
+        queryParameters: params..remove('token'),
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = res.data;
+      if (bytes == null) throw Exception('No CSV data');
+      String filename = 'events.csv';
+      final cd = res.headers.map['content-disposition']?.join(';') ?? '';
+      final nameMatch = RegExp(
+        r'filename="?([^";]+)"?',
+        caseSensitive: false,
+      ).firstMatch(cd);
+      if (nameMatch != null) {
+        final g1 = nameMatch.group(1);
+        if (g1 != null && g1.isNotEmpty) filename = g1;
+      }
+      final blob = html.Blob([bytes], 'text/csv');
+      final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: blobUrl)..download = filename;
+      html.document.body?.append(anchor);
+      anchor.click();
+      anchor.remove();
+      html.Url.revokeObjectUrl(blobUrl);
+    } else {
+      // For mobile/desktop, try opening externally first; otherwise do a simple GET
+      final ok = await launchUrlString(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!ok) {
+        await _dio.get(
+          '/api/reports/export/events',
+          queryParameters: params..remove('token'),
+        );
       }
     }
   }

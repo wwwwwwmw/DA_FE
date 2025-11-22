@@ -12,13 +12,14 @@ class AdminHomePage extends StatefulWidget {
   State<AdminHomePage> createState() => _AdminHomePageState();
 }
 
-class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProviderStateMixin {
+class _AdminHomePageState extends State<AdminHomePage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tab;
 
   @override
   void initState() {
     super.initState();
-  _tab = TabController(length: 5, vsync: this);
+    _tab = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -35,7 +36,10 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
         const SizedBox(height: 8),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text('Bảng điều khiển quản trị', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          child: Text(
+            'Bảng điều khiển quản trị',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
         ),
         TabBar(
           controller: _tab,

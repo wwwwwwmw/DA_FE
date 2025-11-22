@@ -24,7 +24,9 @@ class ParticipantModel {
       userId: json['userId'] ?? json['user_id'],
       status: json['status'] ?? 'pending',
       user: json['User'] != null || json['user'] != null
-          ? UserModel.fromJson((json['User'] ?? json['user']) as Map<String, dynamic>)
+          ? UserModel.fromJson(
+              (json['User'] ?? json['user']) as Map<String, dynamic>,
+            )
           : null,
       adjustmentNote: json['adjustment_note'] ?? json['adjustmentNote'],
     );

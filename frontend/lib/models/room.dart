@@ -4,14 +4,21 @@ class RoomModel {
   final String? location;
   final int? capacity;
 
-  RoomModel({required this.id, required this.name, this.location, this.capacity});
+  RoomModel({
+    required this.id,
+    required this.name,
+    this.location,
+    this.capacity,
+  });
 
   factory RoomModel.fromJson(Map<String, dynamic> json) {
     return RoomModel(
       id: json['id'].toString(),
       name: json['name'] ?? '',
       location: json['location'],
-      capacity: json['capacity'] == null ? null : int.tryParse(json['capacity'].toString()),
+      capacity: json['capacity'] == null
+          ? null
+          : int.tryParse(json['capacity'].toString()),
     );
   }
 
@@ -22,10 +29,11 @@ class RoomModel {
     if (capacity != null) 'capacity': capacity,
   };
 
-  RoomModel copyWith({String? name, String? location, int? capacity}) => RoomModel(
-    id: id,
-    name: name ?? this.name,
-    location: location ?? this.location,
-    capacity: capacity ?? this.capacity,
-  );
+  RoomModel copyWith({String? name, String? location, int? capacity}) =>
+      RoomModel(
+        id: id,
+        name: name ?? this.name,
+        location: location ?? this.location,
+        capacity: capacity ?? this.capacity,
+      );
 }

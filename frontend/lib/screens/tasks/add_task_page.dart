@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
 import '../../models/task.dart';
-import '../../models/department.dart';
 
 class AddTaskPage extends StatefulWidget {
   final TaskModel? editing;
@@ -18,23 +17,22 @@ class _AddTaskPageState extends State<AddTaskPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  final _weightCtrl = TextEditingController();
   DateTime? _start;
   DateTime? _end;
   String _status = 'todo';
   String _priority = 'normal';
-  String _assignmentType = 'open';
+  String _assignmentType = 'direct';
   int _capacity = 1;
-  String? _departmentId; // admin can choose; manager defaults
-  List<DepartmentModel> _departments = const [];
+  String? _departmentId;
+
   String? _projectId;
-  String? _assigneeId; // for direct assign at creation/update (manager/admin)
-  List<Map<String,String>> _deptUsers = const [];
+  String? _assigneeId;
+  List<Map<String, String>> _deptUsers = const [];
 
   @override
   void initState() {
     super.initState();
-  final t = widget.editing;
+    final t = widget.editing;
     if (t != null) {
       _titleCtrl.text = t.title;
       _descCtrl.text = t.description ?? '';
@@ -45,9 +43,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
       _assignmentType = t.assignmentType;
       _capacity = t.capacity;
       _departmentId = t.departmentId;
-      if (t.weight != null) _weightCtrl.text = t.weight.toString();
     }
-    // Preload departments for admin selection
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final api = context.read<ApiService>();
       final me = api.currentUser;
@@ -56,23 +52,21 @@ class _AddTaskPageState extends State<AddTaskPage> {
         _projectId = widget.preselectedProjectId;
       }
       if (me != null && me.role == 'admin') {
-        await api.fetchDepartments();
-        setState(() { _departments = api.departments; });
       } else if (me != null && me.role == 'manager') {
         _departmentId = me.departmentId;
       }
-      // project prefill when editing
       if (widget.editing != null && widget.editing!.project != null) {
         _projectId = widget.editing!.project!.id;
       }
-      // preload dept users for direct assign
       if (me != null && (me.role == 'manager' || me.role == 'admin')) {
         final users = await api.listUsers(limit: 200, offset: 0);
         final filtered = (me.role == 'manager' && me.departmentId != null)
             ? users.where((u) => u.departmentId == me.departmentId).toList()
             : users;
         setState(() {
-          _deptUsers = filtered.map((u) => {'id': u.id, 'name': u.name}).toList();
+          _deptUsers = filtered
+              .map((u) => {'id': u.id, 'name': u.name})
+              .toList();
         });
       }
     });
@@ -80,12 +74,32 @@ class _AddTaskPageState extends State<AddTaskPage> {
 
   Future<void> _pickDate(bool isStart) async {
     final now = DateTime.now();
-    final date = await showDatePicker(context: context, firstDate: DateTime(now.year-1), lastDate: DateTime(now.year+2), initialDate: (_start ?? now));
+    final date = await showDatePicker(
+      context: context,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+      initialDate: (_start ?? now),
+    );
     if (date == null) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
     if (time == null) return;
-    final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-  setState(() { if (isStart) { _start = dt; } else { _end = dt; } });
+    final dt = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    setState(() {
+      if (isStart) {
+        _start = dt;
+      } else {
+        _end = dt;
+      }
+    });
   }
 
   Future<void> _save() async {
@@ -94,7 +108,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
     if (widget.editing == null) {
       final task = await api.createTask(
         title: _titleCtrl.text.trim(),
-        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
         start: _start,
         end: _end,
         status: _status,
@@ -103,16 +119,20 @@ class _AddTaskPageState extends State<AddTaskPage> {
         assignmentType: _assignmentType,
         capacity: _capacity,
         departmentId: _departmentId,
-        weight: _parseWeight(),
       );
       if (_assignmentType == 'direct' && _assigneeId != null) {
         await api.assignTask(task.id, _assigneeId!);
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Công việc "${_titleCtrl.text.trim()}" đã tạo')),
+      );
     } else {
       await api.updateTask(
         widget.editing!.id,
         title: _titleCtrl.text.trim(),
-        description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+        description: _descCtrl.text.trim().isEmpty
+            ? null
+            : _descCtrl.text.trim(),
         start: _start,
         end: _end,
         status: _status,
@@ -120,207 +140,278 @@ class _AddTaskPageState extends State<AddTaskPage> {
         projectId: _projectId,
         assignmentType: _assignmentType,
         capacity: _capacity,
-        weight: _parseWeight(),
       );
       if (_assignmentType == 'direct' && _assigneeId != null) {
         await api.assignTask(widget.editing!.id, _assigneeId!);
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Công việc "${_titleCtrl.text.trim()}" đã cập nhật'),
+        ),
+      );
     }
-    if (mounted) {
-      Navigator.pop(context);
-    }
-  }
-
-  int? _parseWeight() {
-    final raw = _weightCtrl.text.trim();
-    if (raw.isEmpty) return null;
-    final n = int.tryParse(raw);
-    if (n == null) return null;
-    if (n < 0 || n > 100) return null;
-    return n;
-  }
-
-  Future<int> _sumExplicitWeights(String projectId, {String? excludingTaskId}) async {
-    final api = context.read<ApiService>();
-    final list = await api.listTasksForProject(projectId);
-    int sum = 0;
-    for (final t in list) {
-      if (excludingTaskId != null && t.id == excludingTaskId) continue;
-      if (t.weight != null) sum += t.weight!;
-    }
-    final newWeight = _parseWeight();
-    if (newWeight != null) sum += newWeight;
-    return sum;
+    // Refresh list data so previous screens reflect changes
+    try {
+      await api.fetchTasks();
+    } catch (_) {}
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final me = context.watch<ApiService>().currentUser;
-    final canDelete = widget.editing != null && me != null && (
-      me.role == 'admin' ||
-      (me.role == 'manager' && (widget.editing!.departmentId == null || widget.editing!.departmentId == me.departmentId)) ||
-      (widget.editing!.createdBy?.id == me.id)
-    );
+    final canDelete =
+        widget.editing != null &&
+        me != null &&
+        (me.role == 'admin' ||
+            (me.role == 'manager' &&
+                (widget.editing!.departmentId == null ||
+                    widget.editing!.departmentId == me.departmentId)) ||
+            (widget.editing!.createdBy?.id == me.id));
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.editing==null? 'Thêm Công việc':'Sửa Công việc'),
+        title: Text(widget.editing == null ? 'New Task' : 'Edit Task'),
         actions: [
           if (canDelete)
             IconButton(
               icon: const Icon(Icons.delete_outline),
               onPressed: () async {
-                final ok = await showDialog<bool>(context: context, builder: (ctx){
-                  return AlertDialog(
-                    title: const Text('Xóa nhiệm vụ'),
-                    content: const Text('Bạn có chắc muốn xóa nhiệm vụ này?'),
-                    actions: [
-                      TextButton(onPressed: ()=> Navigator.pop(ctx,false), child: const Text('Hủy')),
-                      ElevatedButton(onPressed: ()=> Navigator.pop(ctx,true), child: const Text('Xóa')),
-                    ],
-                  );
-                });
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) {
+                    return AlertDialog(
+                      title: const Text('Xóa nhiệm vụ'),
+                      content: const Text('Bạn có chắc muốn xóa nhiệm vụ này?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Hủy'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Xóa'),
+                        ),
+                      ],
+                    );
+                  },
+                );
                 if (ok == true) {
-                  await context.read<ApiService>().deleteTask(widget.editing!.id);
+                  await context.read<ApiService>().deleteTask(
+                    widget.editing!.id,
+                  );
                   if (mounted) Navigator.pop(context);
                 }
               },
-            )
+            ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: ListView(children: [
-            Text('Thông tin cơ bản', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(children: [
-                  TextFormField(controller: _titleCtrl, decoration: const InputDecoration(labelText: 'Tên công việc'), validator: (v)=> v==null||v.isEmpty? 'Không được để trống':null),
-                  const SizedBox(height:12),
-                  TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: 'Mô tả'), maxLines:3),
-                  const SizedBox(height:12),
-                  Builder(builder: (ctx) {
-                    final api = context.watch<ApiService>();
-                    final items = api.projects
-                        .map((p) => DropdownMenuItem<String>(value: p.id, child: Text(p.name)))
-                        .toList();
-                    final isLocked = widget.preselectedProjectId != null;
-                    return DropdownButtonFormField<String>(
-                      initialValue: _projectId,
-                      items: items,
-                      onChanged: isLocked ? null : (v) => setState(()=> _projectId = v),
-                      validator: (v)=> v==null? 'Chọn dự án trước khi tạo công việc': null,
-                      decoration: const InputDecoration(labelText: 'Dự án'),
-                    );
-                  }),
-                ]),
+          child: ListView(
+            children: [
+              TextFormField(
+                controller: _titleCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'e.g., Finalize presentation slides',
+                ),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Không được để trống' : null,
               ),
-            ),
-            const SizedBox(height: 16),
-            Text('Chi tiết', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(children: [
-                  Row(children: [
-                    Expanded(child: OutlinedButton(onPressed: ()=>_pickDate(true), child: Text(_start==null? 'Thời gian bắt đầu': _start.toString()))),
-                    const SizedBox(width:8),
-                    Expanded(child: OutlinedButton(onPressed: ()=>_pickDate(false), child: Text(_end==null? 'Thời gian kết thúc': _end.toString()))),
-                  ]),
-                  const SizedBox(height:12),
-                  DropdownButtonFormField(initialValue: _status, items: const [
-                    DropdownMenuItem(value: 'todo', child: Text('Cần làm')),
-                    DropdownMenuItem(value: 'in_progress', child: Text('Đang làm')),
-                    DropdownMenuItem(value: 'completed', child: Text('Hoàn thành')),
-                  ], onChanged: (v)=> setState(()=> _status = v as String), decoration: const InputDecoration(labelText: 'Trạng thái')),
-                  const SizedBox(height:12),
-                  DropdownButtonFormField(initialValue: _priority, items: const [
-                    DropdownMenuItem(value: 'low', child: Text('Thấp')),
-                    DropdownMenuItem(value: 'normal', child: Text('Bình thường')),
-                    DropdownMenuItem(value: 'high', child: Text('Cao')),
-                    DropdownMenuItem(value: 'urgent', child: Text('Khẩn cấp')),
-                  ], onChanged: (v)=> setState(()=> _priority = v as String), decoration: const InputDecoration(labelText: 'Độ ưu tiên')),
-                  const SizedBox(height:12),
-                  DropdownButtonFormField(
-                    initialValue: _assignmentType,
-                    items: const [
-                      DropdownMenuItem(value: 'open', child: Text('Mở (tự nhận)')),
-                      DropdownMenuItem(value: 'direct', child: Text('Trực tiếp (phân công)')),
-                    ],
-                    onChanged: (v) => setState(() => _assignmentType = v as String),
-                    decoration: const InputDecoration(labelText: 'Hình thức giao việc'),
-                  ),
-                  const SizedBox(height:12),
-                  DropdownButtonFormField<int>(
-                    initialValue: _capacity,
-                    items: List.generate(10, (i) => i+1).map((v) => DropdownMenuItem(value: v, child: Text('$v chỗ'))).toList(),
-                    onChanged: (v) => setState(() { _capacity = v ?? 1; }),
-                    decoration: const InputDecoration(labelText: 'Số chỗ (slots)'),
-                  ),
-                  const SizedBox(height:12),
-                  TextFormField(
-                    controller: _weightCtrl,
-                    decoration: const InputDecoration(labelText: 'Trọng số (%) - để trống nếu tự phân bổ'),
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) return null; // optional
-                      final n = int.tryParse(v.trim());
-                      if (n == null) return 'Số không hợp lệ';
-                      if (n < 0 || n > 100) return '0-100';
-                      return null;
-                    },
-                    onChanged: (val) async {
-                      if (_projectId != null) {
-                        final sum = await _sumExplicitWeights(_projectId!, excludingTaskId: widget.editing?.id);
-                        if (!mounted) return;
-                        if (sum > 100) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cảnh báo: Tổng trọng số vượt 100%'), backgroundColor: Colors.red));
+              const SizedBox(height: 16),
+              Card(
+                child: Column(
+                  children: [
+                    _RowItem(
+                      icon: Icons.play_circle_outline,
+                      title: 'Start Date',
+                      value: _start == null
+                          ? 'Chọn thời gian'
+                          : _start.toString(),
+                      onTap: () => _pickDate(true),
+                    ),
+                    const Divider(height: 1),
+                    _RowItem(
+                      icon: Icons.calendar_today_outlined,
+                      title: 'Due Date',
+                      value: _end == null ? 'Chọn thời gian' : _end.toString(),
+                      onTap: () => _pickDate(false),
+                    ),
+                    const Divider(height: 1),
+                    _RowItem(
+                      icon: Icons.person_add_alt,
+                      title: 'Assign to',
+                      value: _assigneeId == null
+                          ? 'Chọn người'
+                          : (_deptUsers.firstWhere(
+                                  (e) => e['id'] == _assigneeId,
+                                  orElse: () => {'name': 'Đã chọn'},
+                                )['name'] ??
+                                'Đã chọn'),
+                      onTap: () async {
+                        final v = await _pickAssignee(context);
+                        if (v != null) setState(() => _assigneeId = v);
+                      },
+                    ),
+                    const Divider(height: 1),
+                    Builder(
+                      builder: (ctx) {
+                        final api = context.watch<ApiService>();
+                        final isLocked = widget.preselectedProjectId != null;
+                        String name = 'Chọn dự án';
+                        if (_projectId != null) {
+                          try {
+                            name = api.projects
+                                .firstWhere((p) => p.id == _projectId)
+                                .name;
+                          } catch (_) {
+                            name = 'Chọn dự án';
+                          }
                         }
-                      }
-                    },
-                  ),
-                  if (_assignmentType == 'direct') ...[
-                    const SizedBox(height: 12),
-                    Builder(builder: (ctx){
-                      final me = context.read<ApiService>().currentUser;
-                      if (me == null || (me.role != 'manager' && me.role != 'admin')) return const SizedBox.shrink();
-                      return DropdownButtonFormField<String>(
-                        initialValue: _assigneeId,
-                        items: _deptUsers.map((u) => DropdownMenuItem(value: u['id']!, child: Text(u['name']!))).toList(),
-                        onChanged: (v) => setState(()=> _assigneeId = v),
-                        decoration: const InputDecoration(labelText: 'Giao cho (phòng ban)'),
-                      );
-                    })
+                        return _RowItem(
+                          icon: Icons.folder_open,
+                          title: 'Project',
+                          value: name,
+                          onTap: isLocked
+                              ? null
+                              : () async {
+                                  final v = await _pickProject(context);
+                                  if (v != null) setState(() => _projectId = v);
+                                },
+                        );
+                      },
+                    ),
+                    // Removed explicit Remind Me row (reminders scheduled automatically)
                   ],
-                  const SizedBox(height:12),
-                  Builder(builder: (ctx) {
-                    final api = context.read<ApiService>();
-                    final me = api.currentUser;
-                    if (me != null && me.role == 'admin') {
-                      return DropdownButtonFormField<String>(
-                        initialValue: _departmentId,
-                        items: _departments.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
-                        onChanged: (v) => setState(() => _departmentId = v),
-                        decoration: const InputDecoration(labelText: 'Phòng ban (chỉ admin)'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Description',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _descCtrl,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  hintText: 'Add notes or details...',
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Priority',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'low', label: Text('Low')),
+                  ButtonSegment(value: 'normal', label: Text('Medium')),
+                  ButtonSegment(value: 'high', label: Text('High')),
+                ],
+                selected: {_priority == 'urgent' ? 'high' : _priority},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => setState(() => _priority = s.first),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    if (_projectId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng chọn dự án')),
                       );
+                      return;
                     }
-                    return const SizedBox.shrink();
-                  }),
-                ]),
+                    await _save();
+                  },
+                  child: Text(widget.editing == null ? 'Create Task' : 'Save'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _pickProject(BuildContext context) async {
+    final api = context.read<ApiService>();
+    if (api.projects.isEmpty) return null;
+    return showModalBottomSheet<String>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: ListView(
+          children: api.projects
+              .map(
+                (p) => ListTile(
+                  title: Text(p.name),
+                  onTap: () => Navigator.pop(c, p.id),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _pickAssignee(BuildContext context) async {
+    if (_deptUsers.isEmpty) return null;
+    return showModalBottomSheet<String>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: ListView(
+          children: _deptUsers
+              .map(
+                (u) => ListTile(
+                  title: Text(u['name'] ?? ''),
+                  onTap: () => Navigator.pop(c, u['id']),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _RowItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final VoidCallback? onTap;
+  const _RowItem({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-            const SizedBox(height:24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(onPressed: _save, child: const Text('Lưu')),
-            )
-          ]),
+            Text(value, style: const TextStyle(color: Colors.black54)),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right),
+          ],
         ),
       ),
     );

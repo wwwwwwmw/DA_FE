@@ -24,72 +24,120 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final api = context.watch<ApiService>();
     final u = api.currentUser;
-    final stats = api.taskStats;
+    // Derive task status counts from assignment progress (ignore stored status)
+    int todo = 0, inProgress = 0, completed = 0;
+    for (final t in api.tasks) {
+      final asg = t.assignments;
+      final derived = (asg.isNotEmpty && asg.every((a) => a.progress >= 100))
+          ? 'completed'
+          : (asg.any((a) => a.progress > 0 && a.progress < 100)
+                ? 'in_progress'
+                : 'todo');
+      if (derived == 'completed')
+        completed++;
+      else if (derived == 'in_progress')
+        inProgress++;
+      else
+        todo++;
+    }
+    final stats = {
+      'completed': completed,
+      'in_progress': inProgress,
+      'todo': todo,
+    };
     final cs = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Center(
-          child: Column(children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: cs.primaryContainer,
-              backgroundImage: _avatarImageProvider(u?.avatarUrl),
-              child: u?.avatarUrl == null ? Icon(Icons.person, size: 40, color: cs.primary) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 34,
+                    backgroundColor: cs.primaryContainer,
+                    backgroundImage: _avatarImageProvider(u?.avatarUrl),
+                    child: u?.avatarUrl == null
+                        ? Icon(Icons.person, size: 40, color: cs.primary)
+                        : null,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          u?.name ?? '',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          u?.email ?? '',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const EditProfilePage(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Chỉnh sửa',
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            Text(u?.name ?? '', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            Text(u?.email ?? '', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey)),
-          ]),
-        ),
-        const SizedBox(height: 24),
-        _StatCard(
-          title: 'Hoàn thành',
-          value: stats['completed'] ?? 0,
-          color: cs.tertiary,
-        ),
-        const SizedBox(height: 12),
-        _StatCard(
-          title: 'Đang thực hiện',
-          value: stats['in_progress'] ?? 0,
-          color: cs.primary,
-        ),
-        const SizedBox(height: 12),
-        _StatCard(
-          title: 'Cần làm',
-          value: stats['todo'] ?? 0,
-          color: cs.secondary,
-        ),
-        const SizedBox(height: 24),
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Column(children: [
-            ListTile(leading: const Icon(Icons.edit), title: const Text('Chỉnh sửa Hồ sơ'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage()))),
-            const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.pie_chart), title: const Text('Trạng thái Nhiệm vụ'), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TaskStatusPage()))),
-          ]),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: cs.onErrorContainer,
-              backgroundColor: cs.errorContainer,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            onPressed: () {
-              api.logout();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-                (route) => false,
-              );
-            },
-            icon: const Icon(Icons.logout),
-            label: const Text('Đăng xuất'),
           ),
-        ),
-      ]),
+          const SizedBox(height: 20),
+          const Text(
+            'Task Overview',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          _StatRow(stats: stats, cs: cs),
+          const SizedBox(height: 24),
+          const Text('Actions', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.pie_chart_outline),
+                  title: const Text('Trạng thái Nhiệm vụ'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TaskStatusPage()),
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Đăng xuất'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    api.logout();
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const LoginPage()),
+                      (route) => false,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -107,29 +155,47 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String title;
-  final int value;
-  final Color color;
-  const _StatCard({required this.title, required this.value, required this.color});
+class _StatRow extends StatelessWidget {
+  final Map<String, int> stats;
+  final ColorScheme cs;
+  const _StatRow({required this.stats, required this.cs});
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0,2))],
+    return Row(
+      children: [
+        _miniStat('Hoàn thành', stats['completed']!, cs.tertiary),
+        const SizedBox(width: 8),
+        _miniStat('Đang làm', stats['in_progress']!, cs.primary),
+        const SizedBox(width: 8),
+        _miniStat('Cần làm', stats['todo']!, cs.secondary),
+      ],
+    );
+  }
+
+  Widget _miniStat(String label, int value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value.toString(),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
-      child: Row(children: [
-  Container(width: 40, height: 40, decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle), child: Icon(Icons.task_alt, color: color)),
-        const SizedBox(width: 16),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-          Text('$value nhiệm vụ', style: const TextStyle(color: Colors.grey)),
-        ])),
-        Text(value.toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      ]),
     );
   }
 }
