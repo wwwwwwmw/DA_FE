@@ -305,7 +305,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
             (widget.editing!.createdBy?.id == me.id));
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.editing == null ? 'New Task' : 'Edit Task'),
+        title: Text(
+          widget.editing == null ? 'Nhiệm vụ mới' : 'Chỉnh sửa nhiệm vụ',
+        ),
         actions: [
           if (canDelete)
             IconButton(
@@ -349,7 +351,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
               TextFormField(
                 controller: _titleCtrl,
                 decoration: const InputDecoration(
-                  hintText: 'e.g., Finalize presentation slides',
+                  hintText: 'Ví dụ: Hoàn thiện slide thuyết trình',
                 ),
                 validator: (v) =>
                     v == null || v.isEmpty ? 'Không được để trống' : null,
@@ -360,7 +362,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   children: [
                     _RowItem(
                       icon: Icons.play_circle_outline,
-                      title: 'Start Date',
+                      title: 'Ngày bắt đầu',
                       value: _start == null
                           ? 'Chọn thời gian'
                           : _start.toString(),
@@ -369,14 +371,14 @@ class _AddTaskPageState extends State<AddTaskPage> {
                     const Divider(height: 1),
                     _RowItem(
                       icon: Icons.calendar_today_outlined,
-                      title: 'Due Date',
+                      title: 'Ngày kết thúc',
                       value: _end == null ? 'Chọn thời gian' : _end.toString(),
                       onTap: () => _pickDate(false),
                     ),
                     const Divider(height: 1),
                     _RowItem(
                       icon: Icons.people_alt_outlined,
-                      title: 'Assign to',
+                      title: 'Giao cho',
                       value: _selectedAssignees.isEmpty
                           ? 'Chọn người thực hiện'
                           : '${_selectedAssignees.length} người được chọn',
@@ -401,7 +403,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                         }
                         return _RowItem(
                           icon: Icons.folder_open,
-                          title: 'Project',
+                          title: 'Dự án',
                           value: name,
                           onTap: isLocked
                               ? null
@@ -418,7 +420,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Description',
+                'Mô tả',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
@@ -426,20 +428,20 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 controller: _descCtrl,
                 maxLines: 4,
                 decoration: const InputDecoration(
-                  hintText: 'Add notes or details...',
+                  hintText: 'Thêm ghi chú hoặc chi tiết...',
                 ),
               ),
               const SizedBox(height: 16),
               const Text(
-                'Priority',
+                'Ưu tiên',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               SegmentedButton<String>(
                 segments: const [
-                  ButtonSegment(value: 'low', label: Text('Low')),
-                  ButtonSegment(value: 'normal', label: Text('Medium')),
-                  ButtonSegment(value: 'high', label: Text('High')),
+                  ButtonSegment(value: 'low', label: Text('Thấp')),
+                  ButtonSegment(value: 'normal', label: Text('Trung bình')),
+                  ButtonSegment(value: 'high', label: Text('Cao')),
                 ],
                 selected: {_priority == 'urgent' ? 'high' : _priority},
                 showSelectedIcon: false,
@@ -485,7 +487,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                     }
                     await _save();
                   },
-                  child: Text(widget.editing == null ? 'Create Task' : 'Save'),
+                  child: Text(widget.editing == null ? 'Tạo nhiệm vụ' : 'Lưu'),
                 ),
               ),
             ],

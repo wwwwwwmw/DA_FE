@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+      ).showSnackBar(SnackBar(content: Text('Đăng nhập thất bại: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

@@ -401,6 +401,7 @@ class ApiService extends ChangeNotifier {
   Future<UserModel> adminUpdateUser(
     String id, {
     String? name,
+    String? email,
     String? departmentId,
     String? password,
     String? role,
@@ -409,6 +410,7 @@ class ApiService extends ChangeNotifier {
       '/api/users/$id',
       data: {
         if (name != null) 'name': name,
+        if (email != null) 'email': email,
         if (departmentId != null) 'departmentId': departmentId,
         if (password != null) 'password': password,
         if (role != null) 'role': role,

@@ -133,7 +133,7 @@ class _HomeTasksPageState extends State<HomeTasksPage> {
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(32),
-                  child: Text('Chưa có task'),
+                  child: Text('Chưa có nhiệm vụ nào'),
                 ),
               ),
           ],
@@ -345,7 +345,7 @@ class _FilterBar extends StatelessWidget {
                 initialValue: search,
                 onChanged: onSearchChanged,
                 decoration: const InputDecoration(
-                  labelText: 'Tìm task',
+                  labelText: 'Tìm nhiệm vụ',
                   prefixIcon: Icon(Icons.search),
                 ),
               ),
@@ -500,112 +500,145 @@ Future<void> _createWorkEventDialog(BuildContext context) async {
     builder: (ctx) {
       return StatefulBuilder(
         builder: (ctx, setS) {
-          return AlertDialog(
-            title: const Text('Tạo Lịch công tác'),
-            content: SingleChildScrollView(
+          return Dialog(
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: MediaQuery.of(context).size.height * 0.8,
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                    controller: titleCtrl,
-                    decoration: const InputDecoration(labelText: 'Tiêu đề'),
-                  ),
-                  TextField(
-                    controller: descCtrl,
-                    decoration: const InputDecoration(labelText: 'Mô tả'),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: () async {
-                      final now = DateTime.now();
-                      final d = await showDatePicker(
-                        context: ctx,
-                        firstDate: DateTime(now.year - 1),
-                        lastDate: DateTime(now.year + 2),
-                        initialDate: now,
-                      );
-                      if (d == null) return;
-                      final t = await showTimePicker(
-                        context: ctx,
-                        initialTime: TimeOfDay.now(),
-                      );
-                      if (t == null) return;
-                      setS(
-                        () => start = DateTime(
-                          d.year,
-                          d.month,
-                          d.day,
-                          t.hour,
-                          t.minute,
-                        ),
-                      );
-                    },
-                    child: Text(
-                      start == null ? 'Chọn bắt đầu' : _fmtDT(start!),
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(8),
+                      ),
                     ),
-                  ),
-                  OutlinedButton(
-                    onPressed: () async {
-                      final now = DateTime.now();
-                      final d = await showDatePicker(
-                        context: ctx,
-                        firstDate: DateTime(now.year - 1),
-                        lastDate: DateTime(now.year + 2),
-                        initialDate: now,
-                      );
-                      if (d == null) return;
-                      final t = await showTimePicker(
-                        context: ctx,
-                        initialTime: TimeOfDay.now(),
-                      );
-                      if (t == null) return;
-                      setS(
-                        () => end = DateTime(
-                          d.year,
-                          d.month,
-                          d.day,
-                          t.hour,
-                          t.minute,
-                        ),
-                      );
-                    },
-                    child: Text(end == null ? 'Chọn kết thúc' : _fmtDT(end!)),
-                  ),
-                  if (me != null && me.role == 'admin')
-                    DropdownButtonFormField<String>(
-                      initialValue: departmentId,
-                      hint: const Text('Phòng ban'),
-                      items: api.departments
-                          .map(
-                            (d) => DropdownMenuItem(
-                              value: d.id,
-                              child: Text(d.name),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) => setS(() => departmentId = v),
-                    ),
-                  if (deptUsers.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Người tham gia:',
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          height: 200,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey),
-                            borderRadius: BorderRadius.circular(8),
+                        const Expanded(
+                          child: Text(
+                            'Tạo Lịch công tác',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          child: ListView.builder(
-                            itemCount: deptUsers.length,
-                            itemBuilder: (context, index) {
-                              final user = deptUsers[index];
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: titleCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Tiêu đề',
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: descCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Mô tả',
+                            ),
+                            maxLines: 3,
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton(
+                            onPressed: () async {
+                              final now = DateTime.now();
+                              final d = await showDatePicker(
+                                context: ctx,
+                                firstDate: DateTime(now.year - 1),
+                                lastDate: DateTime(now.year + 2),
+                                initialDate: now,
+                              );
+                              if (d == null) return;
+                              final t = await showTimePicker(
+                                context: ctx,
+                                initialTime: TimeOfDay.now(),
+                              );
+                              if (t == null) return;
+                              setS(
+                                () => start = DateTime(
+                                  d.year,
+                                  d.month,
+                                  d.day,
+                                  t.hour,
+                                  t.minute,
+                                ),
+                              );
+                            },
+                            child: Text(
+                              start == null ? 'Chọn bắt đầu' : _fmtDT(start!),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          OutlinedButton(
+                            onPressed: () async {
+                              final now = DateTime.now();
+                              final d = await showDatePicker(
+                                context: ctx,
+                                firstDate: DateTime(now.year - 1),
+                                lastDate: DateTime(now.year + 2),
+                                initialDate: now,
+                              );
+                              if (d == null) return;
+                              final t = await showTimePicker(
+                                context: ctx,
+                                initialTime: TimeOfDay.now(),
+                              );
+                              if (t == null) return;
+                              setS(
+                                () => end = DateTime(
+                                  d.year,
+                                  d.month,
+                                  d.day,
+                                  t.hour,
+                                  t.minute,
+                                ),
+                              );
+                            },
+                            child: Text(
+                              end == null ? 'Chọn kết thúc' : _fmtDT(end!),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          if (me != null && me.role == 'admin')
+                            DropdownButtonFormField<String>(
+                              initialValue: departmentId,
+                              hint: const Text('Phòng ban'),
+                              items: api.departments
+                                  .map(
+                                    (d) => DropdownMenuItem(
+                                      value: d.id,
+                                      child: Text(d.name),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) => setS(() => departmentId = v),
+                            ),
+                          if (deptUsers.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            const Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Người tham gia:',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...deptUsers.map((user) {
                               final isSelected = selectedParticipants.contains(
                                 user['id'],
                               );
@@ -622,55 +655,78 @@ Future<void> _createWorkEventDialog(BuildContext context) async {
                                   });
                                 },
                                 dense: true,
+                                contentPadding: EdgeInsets.zero,
                               );
-                            },
-                          ),
-                        ),
-                        if (selectedParticipants.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              'Đã chọn: ${selectedParticipants.length} người',
-                              style: TextStyle(
-                                color: Theme.of(context).primaryColor,
-                                fontSize: 12,
+                            }).toList(),
+                            if (selectedParticipants.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  'Đã chọn: ${selectedParticipants.length} người',
+                                  style: TextStyle(
+                                    color: Theme.of(context).primaryColor,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Actions
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade300),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Hủy'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () async {
+                            if (titleCtrl.text.trim().isEmpty) return;
+                            try {
+                              await api.createEvent(
+                                title: titleCtrl.text.trim(),
+                                description: descCtrl.text.trim().isEmpty
+                                    ? null
+                                    : descCtrl.text.trim(),
+                                start: start,
+                                end: end,
+                                departmentIds: departmentId != null
+                                    ? [departmentId!]
+                                    : null,
+                                participantIds: selectedParticipants.isNotEmpty
+                                    ? selectedParticipants
+                                    : null,
+                                type: 'work',
+                              );
+                              await api.fetchEvents();
+                              if (ctx.mounted) Navigator.pop(ctx);
+                            } catch (e) {
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Lỗi: $e')),
+                                );
+                              }
+                            }
+                          },
+                          child: const Text('Tạo'),
+                        ),
                       ],
                     ),
+                  ),
                 ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Hủy'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (titleCtrl.text.trim().isEmpty) return;
-                  await api.createEvent(
-                    title: titleCtrl.text.trim(),
-                    description: descCtrl.text.trim().isEmpty
-                        ? null
-                        : descCtrl.text.trim(),
-                    start: start,
-                    end: end,
-                    departmentIds: departmentId != null
-                        ? [departmentId!]
-                        : null,
-                    participantIds: selectedParticipants.isNotEmpty
-                        ? selectedParticipants
-                        : null,
-                    type: 'work',
-                  );
-                  await api.fetchEvents();
-                  if (ctx.mounted) Navigator.pop(ctx);
-                },
-                child: const Text('Tạo'),
-              ),
-            ],
           );
         },
       );

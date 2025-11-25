@@ -106,7 +106,7 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 8),
           _StatRow(stats: stats, cs: cs),
           const SizedBox(height: 24),
-          const Text('Actions', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Thao tác', style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           Card(
             child: Column(

@@ -214,7 +214,7 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                   ),
                   child: DataTable(
                     columns: const [
-                      DataColumn(label: Text('Task')),
+                      DataColumn(label: Text('Nhiệm vụ')),
                       DataColumn(label: Text('Nhập')),
                       DataColumn(label: Text('Hiệu dụng')),
                       DataColumn(label: Text('Tiến độ')),

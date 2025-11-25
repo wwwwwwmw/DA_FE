@@ -64,8 +64,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
             Wrap(
               spacing: 8,
               children: [
-                Chip(label: Text(e.type == 'meeting' ? 'Meeting' : 'Work')),
-                Chip(label: Text('Status: ${e.status}')),
+                Chip(label: Text(e.type == 'meeting' ? 'Họp' : 'Công tác')),
+                Chip(label: Text('Trạng thái: ${e.status}')),
               ],
             ),
             const SizedBox(height: 12),
@@ -76,19 +76,19 @@ class _EventDetailPageState extends State<EventDetailPage> {
                   children: [
                     _PropRow(
                       icon: Icons.access_time,
-                      label: 'Start',
+                      label: 'Bắt đầu',
                       value: DateFormat('dd/MM HH:mm').format(e.startTime),
                     ),
                     const Divider(height: 24),
                     _PropRow(
                       icon: Icons.timelapse,
-                      label: 'End',
+                      label: 'Kết thúc',
                       value: DateFormat('dd/MM HH:mm').format(e.endTime),
                     ),
                     const Divider(height: 24),
                     _PropRow(
                       icon: Icons.group_outlined,
-                      label: 'Participants',
+                      label: 'Người tham gia',
                       value: e.participants.length.toString(),
                     ),
                   ],
@@ -96,10 +96,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Description',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
+            const Text('Mô tả', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             Text(
               e.description?.trim().isNotEmpty == true
@@ -112,7 +109,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _load(),
-                    child: const Text('Refresh'),
+                    child: const Text('Làm mới'),
                   ),
                 ),
                 const SizedBox(width: 12),

@@ -243,19 +243,19 @@ class _EventReportPageState extends State<EventReportPage> {
                               ),
                               DropdownMenuItem(
                                 value: 'pending',
-                                child: Text('pending'),
+                                child: Text('chờ duyệt'),
                               ),
                               DropdownMenuItem(
                                 value: 'approved',
-                                child: Text('approved'),
+                                child: Text('đã duyệt'),
                               ),
                               DropdownMenuItem(
                                 value: 'rejected',
-                                child: Text('rejected'),
+                                child: Text('bị từ chối'),
                               ),
                               DropdownMenuItem(
                                 value: 'completed',
-                                child: Text('completed'),
+                                child: Text('hoàn thành'),
                               ),
                             ],
                             onChanged: (v) async {

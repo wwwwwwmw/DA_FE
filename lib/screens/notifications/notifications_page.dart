@@ -15,7 +15,7 @@ class NotificationsPage extends StatelessWidget {
     // Sort newest first (assuming server order may vary)
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
+      appBar: AppBar(title: const Text('Thông báo')),
       body: RefreshIndicator(
         onRefresh: () async => api.fetchNotifications(),
         child: ListView.builder(

@@ -473,7 +473,7 @@ class _SchedulePageState extends State<SchedulePage> {
               Wrap(
                 spacing: 8,
                 children: [
-                  Chip(label: Text(e.type == 'meeting' ? 'Meeting' : 'Work')),
+                  Chip(label: Text(e.type == 'meeting' ? 'Họp' : 'Công tác')),
                 ],
               ),
               const SizedBox(height: 8),
@@ -506,14 +506,14 @@ class _SchedulePageState extends State<SchedulePage> {
                           ),
                         );
                       },
-                      child: const Text('View Details'),
+                      child: const Text('Xem chi tiết'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {}, // UI only per request
-                      child: const Text('Mark as Done'),
+                      child: const Text('Đánh dấu hoàn thành'),
                     ),
                   ),
                 ],

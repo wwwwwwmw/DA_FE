@@ -177,6 +177,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
       await api.fetchDepartments();
     }
     final nameCtrl = TextEditingController(text: user.name);
+    final emailCtrl = TextEditingController(text: user.email);
     final passCtrl = TextEditingController();
     String role = user.role;
     DepartmentModel? dep = api.departments.firstWhere(
@@ -198,6 +199,11 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                     TextField(
                       controller: nameCtrl,
                       decoration: const InputDecoration(labelText: 'Tên *'),
+                    ),
+                    TextField(
+                      controller: emailCtrl,
+                      decoration: const InputDecoration(labelText: 'Email *'),
+                      keyboardType: TextInputType.emailAddress,
                     ),
                     TextField(
                       controller: passCtrl,
@@ -254,12 +260,15 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
         );
       },
     );
-    if (ok == true && nameCtrl.text.trim().isNotEmpty) {
+    if (ok == true &&
+        nameCtrl.text.trim().isNotEmpty &&
+        emailCtrl.text.trim().isNotEmpty) {
       try {
         if (!context.mounted) return;
         await api.adminUpdateUser(
           user.id,
           name: nameCtrl.text.trim(),
+          email: emailCtrl.text.trim(),
           role: role,
           departmentId: dep?.id.isEmpty == true ? null : dep?.id,
           password: passCtrl.text.isEmpty ? null : passCtrl.text,
@@ -309,9 +318,9 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Mở khóa thất bại: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Mở khóa thất bại: $e')));
         }
       }
     }
@@ -383,7 +392,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                         onChanged: (v) =>
                             setState(() => _query = v.trim().toLowerCase()),
                         decoration: const InputDecoration(
-                          hintText: 'Search by name or email...',
+                          hintText: 'Tìm theo tên hoặc email...',
                           prefixIcon: Icon(Icons.search),
                         ),
                       ),
@@ -394,7 +403,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                           _chip('All', 'all'),
                           _chip('Admin', 'admin'),
                           _chip('Manager', 'manager'),
-                          _chip('Member', 'employee'),
+                          _chip('Employee', 'employee'),
                         ],
                       ),
                     ],
@@ -426,7 +435,8 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       if (u.isLocked) const SizedBox(width: 8),
-                      if (u.isLocked) const Icon(Icons.lock, size: 16, color: Colors.red),
+                      if (u.isLocked)
+                        const Icon(Icons.lock, size: 16, color: Colors.red),
                     ],
                   ),
                   subtitle: Text(u.email),
@@ -443,7 +453,10 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                           if (v == 'unlock') _unlockAccount(u);
                         },
                         itemBuilder: (_) => [
-                          const PopupMenuItem(value: 'edit', child: Text('Sửa')),
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Text('Sửa'),
+                          ),
                           if (u.isLocked)
                             const PopupMenuItem(
                               value: 'unlock',
@@ -455,7 +468,10 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                                 ],
                               ),
                             ),
-                          const PopupMenuItem(value: 'delete', child: Text('Xóa')),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text('Xóa'),
+                          ),
                         ],
                       ),
                     ],
@@ -501,7 +517,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
         break;
       default:
         color = const Color(0xFFB5F4C7);
-        text = 'Member';
+        text = 'Employee';
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

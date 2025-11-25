@@ -133,21 +133,21 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 spacing: 8,
                 children: [
                   ChoiceChip(
-                    label: const Text('To Do'),
+                    label: const Text('Cần làm'),
                     labelStyle: const TextStyle(color: Colors.black87),
                     backgroundColor: Colors.grey.shade200,
                     selectedColor: Colors.orangeAccent.withOpacity(0.2),
                     selected: computedStatus == 'todo',
                   ),
                   ChoiceChip(
-                    label: const Text('In Progress'),
+                    label: const Text('Đang làm'),
                     labelStyle: const TextStyle(color: Colors.black87),
                     backgroundColor: Colors.grey.shade200,
                     selectedColor: Colors.lightBlueAccent.withOpacity(0.2),
                     selected: computedStatus == 'in_progress',
                   ),
                   ChoiceChip(
-                    label: const Text('Done'),
+                    label: const Text('Hoàn thành'),
                     labelStyle: const TextStyle(color: Colors.black87),
                     backgroundColor: Colors.grey.shade200,
                     selectedColor: Colors.greenAccent.withOpacity(0.25),
@@ -557,7 +557,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       context: context,
       builder: (ctx) {
         return SimpleDialog(
-          title: const Text('Assign to user'),
+          title: const Text('Giao cho người dùng'),
           children: [
             ...filtered.map(
               (u) => SimpleDialogOption(
