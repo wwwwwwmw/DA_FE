@@ -282,10 +282,38 @@ class _AddTaskPageState extends State<AddTaskPage> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Lỗi: ${e.toString()}';
+
+        // Handle weight validation error with better message
+        if (e.toString().contains('Trọng số dự án đã vượt quá 100%')) {
+          // Try to extract the remaining percentage from the error message
+          final match = RegExp(
+            r'Dự án còn lại (\d+)%',
+          ).firstMatch(e.toString());
+          if (match != null) {
+            final remaining = match.group(1);
+            errorMessage =
+                'Trọng số dự án đã vượt quá 100%. Dự án còn lại $remaining%';
+          } else {
+            errorMessage =
+                'Trọng số dự án đã vượt quá 100%. Vui lòng giảm trọng số của nhiệm vụ này.';
+          }
+        } else if (e.toString().contains('Weight out of range')) {
+          errorMessage = 'Trọng số không hợp lệ. Vui lòng nhập từ 0-100%';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi: ${e.toString()}'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Đóng',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
           ),
         );
       }

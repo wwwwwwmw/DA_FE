@@ -193,10 +193,28 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                         ),
                         const SizedBox(height: 12),
                         SizedBox(
-                          height: 220,
-                          child: PieChart(
-                            PieChartData(sections: _buildStatusSections()),
-                          ),
+                          height: 200,
+                          child:
+                              (_todoCount +
+                                      _inProgressCount +
+                                      _completedCount) ==
+                                  0
+                              ? const Center(
+                                  child: Text(
+                                    'Chưa có nhiệm vụ nào',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                )
+                              : PieChart(
+                                  PieChartData(
+                                    sections: _buildStatusSections(),
+                                    centerSpaceRadius: 40,
+                                    sectionsSpace: 2,
+                                  ),
+                                ),
                         ),
                         const SizedBox(height: 12),
                         _legendRow('Hoàn thành', _completedCount, Colors.green),
@@ -212,46 +230,72 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Nhiệm vụ')),
-                      DataColumn(label: Text('Nhập')),
-                      DataColumn(label: Text('Hiệu dụng')),
-                      DataColumn(label: Text('Tiến độ')),
-                    ],
-                    rows: _tasks.map((t) {
-                      double progress;
-                      if (t.assignments.isEmpty) {
-                        progress = t.status == 'completed' ? 1.0 : 0.0;
-                      } else {
-                        final rel = t.assignments
-                            .where((a) => a.status != 'rejected')
-                            .toList();
-                        if (rel.isEmpty) {
-                          progress = 0.0;
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columnSpacing: 12,
+                      horizontalMargin: 16,
+                      columns: const [
+                        DataColumn(label: Text('Nhiệm vụ')),
+                        DataColumn(label: Text('TĐ nhập'), numeric: true),
+                        DataColumn(label: Text('TĐ hiệu dụng'), numeric: true),
+                        DataColumn(label: Text('Tiến độ'), numeric: true),
+                      ],
+                      rows: _tasks.map((t) {
+                        double progress;
+                        if (t.assignments.isEmpty) {
+                          progress = t.status == 'completed' ? 1.0 : 0.0;
                         } else {
-                          final sum = rel.fold<int>(
-                            0,
-                            (a, b) => a + b.progress,
-                          );
-                          progress = sum / (rel.length * 100.0);
+                          final rel = t.assignments
+                              .where((a) => a.status != 'rejected')
+                              .toList();
+                          if (rel.isEmpty) {
+                            progress = 0.0;
+                          } else {
+                            final sum = rel.fold<int>(
+                              0,
+                              (a, b) => a + b.progress,
+                            );
+                            progress = sum / (rel.length * 100.0);
+                          }
                         }
-                      }
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            Text(
-                              t.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 120,
+                                ),
+                                child: Text(
+                                  t.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
                             ),
-                          ),
-                          DataCell(Text(t.weight?.toString() ?? '-')),
-                          DataCell(Text('${t.effectiveWeight}%')),
-                          DataCell(Text('${(progress * 100).round()}%')),
-                        ],
-                      );
-                    }).toList(),
+                            DataCell(
+                              Text(
+                                t.weight?.toString() ?? '-',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                '${t.effectiveWeight}%',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                '${(progress * 100).round()}%',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -265,36 +309,38 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                   final completed = status == 'completed';
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (completed)
-                          const Padding(
-                            padding: EdgeInsets.only(right: 6.0, top: 6.0),
-                            child: Icon(
-                              Icons.check_circle,
-                              color: Colors.green,
-                              size: 20,
+                    child: IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (completed)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8.0, top: 8.0),
+                              child: Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                                size: 18,
+                              ),
+                            )
+                          else
+                            const SizedBox(width: 26),
+                          Expanded(
+                            child: TaskListItemCard(
+                              task: t,
+                              onTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => TaskDetailPage(task: t),
+                                  ),
+                                );
+                                if (!mounted) return;
+                                await _load();
+                              },
                             ),
-                          )
-                        else
-                          const SizedBox(width: 0),
-                        Expanded(
-                          child: TaskListItemCard(
-                            task: t,
-                            onTap: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => TaskDetailPage(task: t),
-                                ),
-                              );
-                              if (!mounted) return;
-                              await _load();
-                            },
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 }),
@@ -377,15 +423,18 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   }
 
   PieChartSectionData _sec(int value, int total, Color color, String label) {
-    final pct = total == 0 ? 0 : (value / total) * 100;
+    final pct = total == 0 ? 0.0 : (value / total) * 100;
     return PieChartSectionData(
       color: color,
-      value: value.toDouble(),
-      title: '${pct.round()}%',
-      radius: 60,
+      value: value == 0
+          ? 0.1
+          : value.toDouble(), // Minimum value for visibility
+      title: value == 0 ? '' : '${pct.round()}%',
+      radius: 50,
       titleStyle: const TextStyle(
         color: Colors.white,
         fontWeight: FontWeight.bold,
+        fontSize: 12,
       ),
     );
   }

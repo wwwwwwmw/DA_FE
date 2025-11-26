@@ -263,37 +263,38 @@ class _CompactStats extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
-        _mini('Hoàn thành', stats['completed']!, cs.tertiary),
-        const SizedBox(width: 8),
-        _mini('Đang làm', stats['in_progress']!, cs.primary),
-        const SizedBox(width: 8),
-        _mini('Cần làm', stats['todo']!, cs.secondary),
+        Flexible(child: _mini('Hoàn thành', stats['completed']!, cs.tertiary)),
+        const SizedBox(width: 4),
+        Flexible(child: _mini('Đang làm', stats['in_progress']!, cs.primary)),
+        const SizedBox(width: 4),
+        Flexible(child: _mini('Cần làm', stats['todo']!, cs.secondary)),
       ],
     );
   }
 
   Widget _mini(String label, int value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value.toString(),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value.toString(),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }
@@ -321,36 +322,74 @@ class _FilterBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                initialValue: selectedProjectId,
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Tất cả dự án'),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 600) {
+              return Column(
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedProjectId,
+                    items: [
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('Tất cả dự án'),
+                      ),
+                      ...projects.map(
+                        (p) =>
+                            DropdownMenuItem(value: p.id, child: Text(p.name)),
+                      ),
+                    ],
+                    onChanged: onProjectChanged,
+                    decoration: const InputDecoration(labelText: 'Dự án'),
                   ),
-                  ...projects.map(
-                    (p) => DropdownMenuItem(value: p.id, child: Text(p.name)),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    initialValue: search,
+                    onChanged: onSearchChanged,
+                    decoration: const InputDecoration(
+                      labelText: 'Tìm nhiệm vụ',
+                      prefixIcon: Icon(Icons.search),
+                    ),
                   ),
                 ],
-                onChanged: onProjectChanged,
-                decoration: const InputDecoration(labelText: 'Dự án'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                initialValue: search,
-                onChanged: onSearchChanged,
-                decoration: const InputDecoration(
-                  labelText: 'Tìm nhiệm vụ',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-            ),
-          ],
+              );
+            } else {
+              return Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: selectedProjectId,
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('Tất cả dự án'),
+                        ),
+                        ...projects.map(
+                          (p) => DropdownMenuItem(
+                            value: p.id,
+                            child: Text(p.name),
+                          ),
+                        ),
+                      ],
+                      onChanged: onProjectChanged,
+                      decoration: const InputDecoration(labelText: 'Dự án'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      initialValue: search,
+                      onChanged: onSearchChanged,
+                      decoration: const InputDecoration(
+                        labelText: 'Tìm nhiệm vụ',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+          },
         ),
       ],
     );
@@ -502,8 +541,9 @@ Future<void> _createWorkEventDialog(BuildContext context) async {
         builder: (ctx, setS) {
           return Dialog(
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.9,
-              height: MediaQuery.of(context).size.height * 0.8,
+              width: MediaQuery.of(context).size.width * 0.85,
+              height: MediaQuery.of(context).size.height * 0.75,
+              constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
               child: Column(
                 children: [
                   // Header
@@ -536,7 +576,10 @@ Future<void> _createWorkEventDialog(BuildContext context) async {
                   // Content
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       child: Column(
                         children: [
                           TextField(
@@ -545,15 +588,15 @@ Future<void> _createWorkEventDialog(BuildContext context) async {
                               labelText: 'Tiêu đề',
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           TextField(
                             controller: descCtrl,
                             decoration: const InputDecoration(
                               labelText: 'Mô tả',
                             ),
-                            maxLines: 3,
+                            maxLines: 2,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           OutlinedButton(
                             onPressed: () async {
                               final now = DateTime.now();
@@ -583,7 +626,7 @@ Future<void> _createWorkEventDialog(BuildContext context) async {
                               start == null ? 'Chọn bắt đầu' : _fmtDT(start!),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           OutlinedButton(
                             onPressed: () async {
                               final now = DateTime.now();
@@ -613,7 +656,7 @@ Future<void> _createWorkEventDialog(BuildContext context) async {
                               end == null ? 'Chọn kết thúc' : _fmtDT(end!),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           if (me != null && me.role == 'admin')
                             DropdownButtonFormField<String>(
                               initialValue: departmentId,
@@ -675,53 +718,59 @@ Future<void> _createWorkEventDialog(BuildContext context) async {
                     ),
                   ),
                   // Actions
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: Colors.grey.shade300),
+                  SafeArea(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Hủy'),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Colors.grey.shade300),
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () async {
-                            if (titleCtrl.text.trim().isEmpty) return;
-                            try {
-                              await api.createEvent(
-                                title: titleCtrl.text.trim(),
-                                description: descCtrl.text.trim().isEmpty
-                                    ? null
-                                    : descCtrl.text.trim(),
-                                start: start,
-                                end: end,
-                                departmentIds: departmentId != null
-                                    ? [departmentId!]
-                                    : null,
-                                participantIds: selectedParticipants.isNotEmpty
-                                    ? selectedParticipants
-                                    : null,
-                                type: 'work',
-                              );
-                              await api.fetchEvents();
-                              if (ctx.mounted) Navigator.pop(ctx);
-                            } catch (e) {
-                              if (ctx.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Lỗi: $e')),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Hủy'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () async {
+                              if (titleCtrl.text.trim().isEmpty) return;
+                              try {
+                                await api.createEvent(
+                                  title: titleCtrl.text.trim(),
+                                  description: descCtrl.text.trim().isEmpty
+                                      ? null
+                                      : descCtrl.text.trim(),
+                                  start: start,
+                                  end: end,
+                                  departmentIds: departmentId != null
+                                      ? [departmentId!]
+                                      : null,
+                                  participantIds:
+                                      selectedParticipants.isNotEmpty
+                                      ? selectedParticipants
+                                      : null,
+                                  type: 'work',
                                 );
+                                await api.fetchEvents();
+                                if (ctx.mounted) Navigator.pop(ctx);
+                              } catch (e) {
+                                if (ctx.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Lỗi: $e')),
+                                  );
+                                }
                               }
-                            }
-                          },
-                          child: const Text('Tạo'),
-                        ),
-                      ],
+                            },
+                            child: const Text('Tạo'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

@@ -80,35 +80,35 @@ class _SystemTabState extends State<SystemTab> {
     }
   }
 
-  Future<void> _confirmReset() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Thiết lập lại'),
-        content: const Text(
-          'This will reset appearance and preferences to defaults. Your data remains unchanged.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Thiết lập lại'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cài đặt đã được thiết lập lại về mặc định.'),
-        ),
-      );
-    }
-  }
+  // Future<void> _confirmReset() async {
+  //   final ok = await showDialog<bool>(
+  //     context: context,
+  //     builder: (ctx) => AlertDialog(
+  //       title: const Text('Thiết lập lại'),
+  //       content: const Text(
+  //         'This will reset appearance and preferences to defaults. Your data remains unchanged.',
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.of(ctx).pop(false),
+  //           child: const Text('Hủy'),
+  //         ),
+  //         FilledButton(
+  //           onPressed: () => Navigator.of(ctx).pop(true),
+  //           style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+  //           child: const Text('Thiết lập lại'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  //   if (ok == true && mounted) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('Cài đặt đã được thiết lập lại về mặc định.'),
+  //       ),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -153,14 +153,14 @@ class _SystemTabState extends State<SystemTab> {
                   onTap: _busy ? null : _confirmRestore,
                 ),
                 const Divider(height: 0),
-                ListTile(
-                  leading: const Icon(Icons.settings_backup_restore_outlined),
-                  title: const Text('Thiết lập lại về mặc định'),
-                  subtitle: const Text(
-                    'Restore appearance and app preferences',
-                  ),
-                  onTap: _busy ? null : _confirmReset,
-                ),
+                // ListTile(
+                //   leading: const Icon(Icons.settings_backup_restore_outlined),
+                //   title: const Text('Thiết lập lại về mặc định'),
+                //   subtitle: const Text(
+                //     'Restore appearance and app preferences',
+                //   ),
+                //   onTap: _busy ? null : _confirmReset,
+                // ),
               ],
             ),
           ),

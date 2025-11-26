@@ -511,6 +511,14 @@ class ApiService extends ChangeNotifier {
         if (weight != null) 'weight': weight,
       },
     );
+
+    // Handle 4xx errors manually since validateStatus allows them
+    if (res.statusCode != null && res.statusCode! >= 400) {
+      final errorData = res.data as Map<String, dynamic>? ?? {};
+      final message = errorData['message'] ?? 'Lỗi không xác định';
+      throw Exception(message);
+    }
+
     final task = TaskModel.fromJson(res.data);
     tasks.insert(0, task);
     notifyListeners();
@@ -547,6 +555,14 @@ class ApiService extends ChangeNotifier {
         if (weight != null) 'weight': weight,
       },
     );
+
+    // Handle 4xx errors manually since validateStatus allows them
+    if (res.statusCode != null && res.statusCode! >= 400) {
+      final errorData = res.data as Map<String, dynamic>? ?? {};
+      final message = errorData['message'] ?? 'Lỗi không xác định';
+      throw Exception(message);
+    }
+
     final task = TaskModel.fromJson(res.data);
     tasks = tasks.map((t) => t.id == id ? task : t).toList();
     notifyListeners();

@@ -12,8 +12,8 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController(text: 'admin@example.com');
-  final _pwdCtrl = TextEditingController(text: 'password123');
+  final _emailCtrl = TextEditingController();
+  final _pwdCtrl = TextEditingController();
   bool _loading = false;
 
   Future<void> _submit() async {
@@ -101,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
                       validator: (v) =>
                           v == null || v.isEmpty ? 'Nhập mật khẩu' : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -111,7 +111,16 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         onPressed: _loading ? null : _submit,
                         child: _loading
-                            ? const CircularProgressIndicator()
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
                             : const Text('Đăng nhập'),
                       ),
                     ),

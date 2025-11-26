@@ -67,76 +67,165 @@ class _TaskStatusPageState extends State<TaskStatusPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _projectId,
-                    isDense: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Dự án',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('Tất cả dự án'),
-                      ),
-                      ...projects.map(
-                        (p) => DropdownMenuItem<String>(
-                          value: p.id,
-                          child: Text(p.name),
+            // Responsive filter layout to fix overflow
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Use Column layout for small screens
+                if (constraints.maxWidth < 600) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: _projectId,
+                        decoration: const InputDecoration(
+                          labelText: 'Dự án',
+                          border: OutlineInputBorder(),
+                          isDense: true,
                         ),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null,
+                            child: Text('Tất cả dự án'),
+                          ),
+                          ...projects.map(
+                            (p) => DropdownMenuItem<String>(
+                              value: p.id,
+                              child: Text(p.name),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => setState(() {
+                          _projectId = v;
+                          _selectedStatus = null;
+                        }),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final now = DateTime.now();
+                                final picked = await showDateRangePicker(
+                                  context: context,
+                                  firstDate: DateTime(now.year - 5),
+                                  lastDate: DateTime(now.year + 5),
+                                  initialDateRange: _range,
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    _range = picked;
+                                    _selectedStatus = null;
+                                  });
+                                }
+                              },
+                              icon: const Icon(Icons.filter_alt, size: 16),
+                              label: Text(
+                                _range == null
+                                    ? 'Chọn ngày'
+                                    : '${_fmtDate(_range!.start)} → ${_fmtDate(_range!.end)}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => setState(() {
+                              _projectId = null;
+                              _range = null;
+                              _selectedStatus = null;
+                            }),
+                            icon: const Icon(Icons.clear),
+                            tooltip: 'Xóa bộ lọc',
+                          ),
+                        ],
                       ),
                     ],
-                    onChanged: (v) => setState(() {
-                      _projectId = v;
-                      _selectedStatus = null; // đổi dự án thì bỏ lọc trạng thái
-                    }),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final now = DateTime.now();
-                        final picked = await showDateRangePicker(
-                          context: context,
-                          firstDate: DateTime(now.year - 5),
-                          lastDate: DateTime(now.year + 5),
-                          initialDateRange: _range,
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _range = picked;
-                            _selectedStatus =
-                                null; // đổi khoảng ngày thì bỏ lọc trạng thái
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.filter_alt),
-                      label: Text(
-                        _range == null
-                            ? 'Khoảng ngày'
-                            : '${_fmtDate(_range!.start)} → ${_fmtDate(_range!.end)}',
+                  );
+                } else {
+                  // Use Row layout for larger screens with better spacing
+                  return Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: DropdownButtonFormField<String>(
+                          value: _projectId,
+                          decoration: const InputDecoration(
+                            labelText: 'Dự án',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('Tất cả dự án'),
+                            ),
+                            ...projects.map(
+                              (p) => DropdownMenuItem<String>(
+                                value: p.id,
+                                child: Text(p.name),
+                              ),
+                            ),
+                          ],
+                          onChanged: (v) => setState(() {
+                            _projectId = v;
+                            _selectedStatus = null;
+                          }),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () => setState(() {
-                    _projectId = null;
-                    _range = null;
-                    _selectedStatus = null;
-                  }),
-                  icon: const Icon(Icons.clear),
-                ),
-              ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            final now = DateTime.now();
+                            final picked = await showDateRangePicker(
+                              context: context,
+                              firstDate: DateTime(now.year - 5),
+                              lastDate: DateTime(now.year + 5),
+                              initialDateRange: _range,
+                            );
+                            if (picked != null) {
+                              setState(() {
+                                _range = picked;
+                                _selectedStatus = null;
+                              });
+                            }
+                          },
+                          icon: const Icon(Icons.filter_alt, size: 16),
+                          label: Text(
+                            _range == null
+                                ? 'Ngày'
+                                : '${_fmtDate(_range!.start).substring(0, 5)}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() {
+                          _projectId = null;
+                          _range = null;
+                          _selectedStatus = null;
+                        }),
+                        icon: const Icon(Icons.clear),
+                        tooltip: 'Xóa bộ lọc',
+                      ),
+                    ],
+                  );
+                }
+              },
             ),
             const SizedBox(height: 12),
             SizedBox(

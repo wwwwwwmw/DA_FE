@@ -401,9 +401,9 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                         spacing: 8,
                         children: [
                           _chip('All', 'all'),
-                          _chip('Admin', 'admin'),
-                          _chip('Manager', 'manager'),
-                          _chip('Employee', 'employee'),
+                          _chip('Quản trị', 'admin'),
+                          _chip('Quản lý', 'manager'),
+                          _chip('Nhân viên', 'employee'),
                         ],
                       ),
                     ],
@@ -509,15 +509,15 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
     switch (role) {
       case 'admin':
         color = const Color(0xFFF2D98B);
-        text = 'Admin';
+        text = 'Quản trị';
         break;
       case 'manager':
         color = const Color(0xFFBFD6FF);
-        text = 'Manager';
+        text = 'Quản lý';
         break;
       default:
         color = const Color(0xFFB5F4C7);
-        text = 'Employee';
+        text = 'Nhân viên';
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
