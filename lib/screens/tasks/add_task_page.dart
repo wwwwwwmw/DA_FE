@@ -28,7 +28,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
 
   String? _projectId;
   String? _assigneeId;
-  List<String> _selectedAssignees = [];
+  final List<String> _selectedAssignees = [];
   List<Map<String, String>> _deptUsers = const [];
 
   @override

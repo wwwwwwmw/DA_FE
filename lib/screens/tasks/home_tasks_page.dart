@@ -700,7 +700,7 @@ Future<void> _createWorkEventDialog(BuildContext context) async {
                                 dense: true,
                                 contentPadding: EdgeInsets.zero,
                               );
-                            }).toList(),
+                            }),
                             if (selectedParticipants.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),

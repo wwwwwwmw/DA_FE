@@ -76,7 +76,7 @@ class _TaskStatusPageState extends State<TaskStatusPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       DropdownButtonFormField<String>(
-                        value: _projectId,
+                        initialValue: _projectId,
                         decoration: const InputDecoration(
                           labelText: 'Dự án',
                           border: OutlineInputBorder(),
@@ -155,7 +155,7 @@ class _TaskStatusPageState extends State<TaskStatusPage> {
                       Expanded(
                         flex: 3,
                         child: DropdownButtonFormField<String>(
-                          value: _projectId,
+                          initialValue: _projectId,
                           decoration: const InputDecoration(
                             labelText: 'Dự án',
                             border: OutlineInputBorder(),
@@ -202,7 +202,7 @@ class _TaskStatusPageState extends State<TaskStatusPage> {
                           label: Text(
                             _range == null
                                 ? 'Ngày'
-                                : '${_fmtDate(_range!.start).substring(0, 5)}',
+                                : _fmtDate(_range!.start).substring(0, 5),
                             style: const TextStyle(fontSize: 12),
                           ),
                           style: ElevatedButton.styleFrom(
